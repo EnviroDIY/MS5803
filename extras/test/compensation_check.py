@@ -90,7 +90,7 @@ def compensate(C, cc, D1, D2, model):
         T2 = cc[13] * (dT * dT) // (1 << cc[14])
         OFF2 = cc[15] * TempSq // 16
         SENS2 = 0
-        if T > 4500 and model == 1:
+        if T >= 4500 and model == 1:
             SENS2 -= (T - 4500) ** 2 // 8
     OFF = (C2 << cc[0]) + ((C4 * dT) >> cc[1]) - OFF2
     SENS = (C1 << cc[2]) + ((C3 * dT) >> cc[3]) - SENS2
@@ -133,7 +133,7 @@ def d1_for(C, cc, D2, model, mbar):
 
 # The rated range is -40 to +85 C. The two above 45 C reach the 01BA's own
 # very-high-temperature branch, which no other variant has.
-CASES = (-4000, -2000, 0, 2000, 4000, 4600, 6000, 8500)   # reported, 0.01 C
+CASES = (-4000, -2000, 0, 2000, 4000, 4500, 4600, 6000, 8500)   # reported, 0.01 C
 
 
 def emit():
