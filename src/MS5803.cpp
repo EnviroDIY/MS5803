@@ -19,6 +19,34 @@ Distributed as-is; no warranty is given.
 #include <Wire.h> // Wire library is used for I2C
 #include "MS5803.h"
 
+// Conversion constants per variant, one row per model, taken from that
+// variant's "PRESSURE AND TEMPERATURE CALCULATION" and "SECOND ORDER
+// TEMPERATURE COMPENSATION" pages. The entries are:
+//
+//   [0]  OFF  = C2 << [0]                [9]  SENS2 low-temperature multiplier
+//   [1]         + (C4 * dT) >> [1]       [10] SENS2 low-temperature divisor exponent
+//   [2]  SENS = C1 << [2]                [11] OFF2 very-low-temperature multiplier
+//   [3]         + (C3 * dT) >> [3]       [12] SENS2 very-low-temperature multiplier
+//   [4]  100 x the divisor from the      [13] T2 high-temperature multiplier
+//        compensated value to mbar       [14] T2 high-temperature divisor exponent
+//   [5]  T2 low-temperature multiplier   [15] OFF2 high-temperature multiplier
+//   [6]  T2 low-temperature divisor exp  [16] final pressure divisor exponent
+//   [7]  OFF2 low-temperature multiplier
+//   [8]  OFF2 low-temperature divisor exponent
+//
+// A wrong entry gives a confidently wrong pressure and raises no fault, so
+// extras/test/compensation_check.py reads this table out of this file and
+// compares it with the datasheets entry by entry. Run it after any edit here.
+static const uint16_t ConvTable[6][17] = {
+    {16, 7, 15, 8, 10000, 1, 31,  3, 0, 7, 3,  0,  2, 0,  0, 0, 15},  //01BA
+    {17, 6, 16, 7, 10000, 1, 31, 61, 4, 2, 0, 20, 12, 0,  0, 0, 15},  //02BA
+    {18, 5, 17, 7, 10000, 3, 33,  3, 3, 7, 3,  0,  3, 0,  0, 0, 15},  //05BA
+    {18, 5, 17, 6, 10000, 3, 33,  3, 3, 7, 3,  0,  3, 0,  0, 0, 15},  //07BA
+    {16, 7, 15, 8,  1000, 3, 33,  3, 1, 5, 3,  7,  4, 7, 37, 1, 15},  //14BA
+    {16, 7, 15, 8,  1000, 3, 33,  3, 1, 5, 3,  7,  4, 7, 37, 1, 13},  //30BA
+};
+
+
 MS5803::MS5803(uint8_t address, int MaxPressure)
 // Base library type I2C
 {
@@ -67,49 +95,7 @@ uint8_t MS5803::begin()
        // Serial.println(coefficient[i]);
     }
 
-    switch(Model){
-    case 1:
-        {
-        int ConvTemp1[] = {16, 7, 15, 8, 10000, 1, 31, 3, 0, 7, 0, 0, 3, 0, 0, 0};
-        memcpy(ConvCoef, ConvTemp1, 16);
-        }
-        break;
-
-    case 2:
-        {
-        int ConvTemp2[] = {17, 6, 16, 7, 10000, 1, 31, 61, 4, 2, 0, 20, 12, 0, 0, 0};
-        memcpy(ConvCoef, ConvTemp2, 16);
-        }
-        break;
-
-    case 3:
-        {
-        int ConvTemp3[] = {18, 5, 17, 7, 10000, 3, 33, 3, 3, 7, 3, 0, 3, 0, 0, 0};
-        memcpy(ConvCoef, ConvTemp3, 16);
-        }
-        break;
-
-    case 4:
-        {
-        int ConvTemp4[] = {18, 5, 17, 6, 2500, 3, 33, 3, 3, 7, 3, 0, 3, 0, 0, 0};
-        memcpy(ConvCoef, ConvTemp4, 16);
-        }
-        break;
-
-    case 5:
-        {
-        int ConvTemp5[] = {16, 7, 15, 8, 1000, 3, 33, 3, 1, 5, 3, 7, 4, 7, 37, 1};
-        memcpy(ConvCoef, ConvTemp5, 16);
-        }
-        break;
-
-    case 6:
-        {
-        int ConvTemp6[] = {16, 7, 15, 8, 10, 10, 3, 33, 3, 1, 5, 7, 7, 4, 7, 37, 1};
-        memcpy(ConvCoef, ConvTemp6, 16);
-        }
-        break;
-    }
+    memcpy(ConvCoef, ConvTable[Model - 1], sizeof(ConvCoef));
 
     Wire.beginTransmission((int)_address);
     return Wire.endTransmission(); //Return sucess or failue of I2C connection
@@ -216,7 +202,7 @@ void MS5803::getMeasurements(precision _precision)
         OFF2 = ConvCoef[15]*((temp_calc - 2000) * (temp_calc - 2000)) / 16;
         SENS2 = 0;
 
-        if(temp_calc > 4500 && Model == 1) SENS2 = SENS2 - ((temp_calc + 1500) * (temp_calc + 1500))/8; //NOTE: this condition is only used for the 01BA model!
+        if(temp_calc > 4500 && Model == 1) SENS2 = SENS2 - ((temp_calc - 4500) * (temp_calc - 4500))/8; //NOTE: this condition is only used for the 01BA model!
     }
 
     // Now bring it all together to apply offsets
@@ -232,7 +218,7 @@ void MS5803::getMeasurements(precision _precision)
     SENS = SENS - SENS2;
 
     // Now lets calculate the pressure
-    pressure_calc = (((SENS * pressure_raw) / 2097152 ) - OFF) / 32768;
+    pressure_calc = (((SENS * pressure_raw) / 2097152 ) - OFF) / ((int64_t)1 << ConvCoef[16]);
 
     _temperature_actual = temp_calc ;
     _pressure_actual = pressure_calc ; // 10;// pressure_calc;
