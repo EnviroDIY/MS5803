@@ -46,6 +46,20 @@ static const uint16_t ConvTable[6][17] = {
     {16, 7, 15, 8,  1000, 3, 33,  3, 1, 5, 3,  7,  4, 7, 37, 1, 13},  //30BA
 };
 
+// NOT IMPLEMENTED, and it applies to the 07BA alone: that part carries a third
+// compensation stage above 1100 mbar, and its PROM word 7 is not only the CRC.
+// Bits 0-3 are the checksum, bits 4-9 are C7 and bits 10-15 are C8, and
+// ENG_DS_MS5803-07BA_B3 Figure 18 then gives
+//
+//   P3 = P + [(C7 - 2^5) * 2^2 - ((C8 - 2^5) * (T - 20)) / 2^4] * (P - 1100) / 4900
+//
+// for P above 1100 mbar, with P3 = P below it. A 07BA read through this library
+// is therefore uncompensated above 1100 mbar. No 07BA is fitted to any Northern
+// Widget board, and the datasheet does not say whether P and T enter that
+// formula in mbar and degrees C or in the hundredths the calculation page uses,
+// so it is recorded here rather than guessed at. The other five variants' word 7
+// is the CRC alone.
+
 
 MS5803::MS5803(uint8_t address, int MaxPressure)
 // Base library type I2C
