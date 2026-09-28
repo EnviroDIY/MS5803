@@ -178,31 +178,37 @@ void MS5803::getMeasurements(precision _precision)
     //Now we have our first order Temperature, let's calculate the second order.
     int64_t T2, OFF2, SENS2, OFF, SENS; //working variables
 
+    //Squared terms in 64 bits: 61 * (-40C - 20C)^2 overflows an int32 on the 02BA,
+    //and the divisors are powers of two, so a shift is exact where pow() was not.
+    int64_t TempSq = (int64_t)(temp_calc - 2000) * (temp_calc - 2000);
+
     if (temp_calc < 2000)
     // If temp_calc is below 20.0C
         //LOW TEMP
     {
         T2 = ConvCoef[5]* (((int64_t)dT * dT) >> ConvCoef[6]);
-        OFF2 = ConvCoef[7] * ((temp_calc - 2000) * (temp_calc - 2000)) / (pow(2,ConvCoef[8]));
-        SENS2 = ConvCoef[9] * ((temp_calc - 2000) * (temp_calc - 2000)) / (pow(2,ConvCoef[10]));
+        OFF2 = ConvCoef[7] * TempSq / ((int64_t)1 << ConvCoef[8]);
+        SENS2 = ConvCoef[9] * TempSq / ((int64_t)1 << ConvCoef[10]);
 
         if(temp_calc < -1500)
         // If temp_calc is below -15.0C
             //VERY LOW TEMP
         {
-            OFF2 = OFF2 + ConvCoef[11] * ((temp_calc + 1500) * (temp_calc + 1500));
-            SENS2 = SENS2 + ConvCoef[12] * ((temp_calc + 1500) * (temp_calc + 1500));
+            int64_t ColdSq = (int64_t)(temp_calc + 1500) * (temp_calc + 1500);
+            OFF2 = OFF2 + ConvCoef[11] * ColdSq;
+            SENS2 = SENS2 + ConvCoef[12] * ColdSq;
         }
     }
     else
     // If temp_calc is above 20.0C
         //HIGH TEMP
     {
-        T2 = ConvCoef[13] * ((uint64_t)dT * dT)/pow(2,ConvCoef[14]);
-        OFF2 = ConvCoef[15]*((temp_calc - 2000) * (temp_calc - 2000)) / 16;
+        T2 = ConvCoef[13] * ((int64_t)dT * dT) / ((int64_t)1 << ConvCoef[14]);
+        OFF2 = ConvCoef[15] * TempSq / 16;
         SENS2 = 0;
 
-        if(temp_calc > 4500 && Model == 1) SENS2 = SENS2 - ((temp_calc - 4500) * (temp_calc - 4500))/8; //NOTE: this condition is only used for the 01BA model!
+        //NOTE: this condition is only used for the 01BA model!
+        if(temp_calc > 4500 && Model == 1) SENS2 = SENS2 - ((int64_t)(temp_calc - 4500) * (temp_calc - 4500))/8;
     }
 
     // Now bring it all together to apply offsets
