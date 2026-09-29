@@ -86,6 +86,7 @@ private:
 
     void getMeasurements(precision _precision);
 
+    void setModel(int MaxPressure);   // the ConvTable row for a part's bar figure
     void sendCommand(uint8_t command);    // General I2C send command function
     uint32_t getADCconversion(measurement _measurement, precision _precision);    // Retrieve ADC result
 

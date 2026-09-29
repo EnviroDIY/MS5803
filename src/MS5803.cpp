@@ -67,16 +67,23 @@ MS5803::MS5803(uint8_t address, int MaxPressure)
 {
     _address = address; //set interface used for communication
 
+    setModel(MaxPressure);
+}
+
+void MS5803::setModel(int MaxPressure)
+// The row of ConvTable this part's constants live in, from the bar figure in
+// its order code. One place, because two copies of a table of variants is how
+// a variant gets added to one of them.
+{
     switch(MaxPressure)
     {
-        // Set model number based on maximum pressure range
-        case (1): {Model = 1; break;}    //BA01
-        case (2): {Model = 2; break;}    //BA02
-        case (5): {Model = 3; break;}    //BA05
-        case (7): {Model = 4; break;}    //BA07
+        case (1):  {Model = 1; break;}   //BA01
+        case (2):  {Model = 2; break;}   //BA02
+        case (5):  {Model = 3; break;}   //BA05
+        case (7):  {Model = 4; break;}   //BA07
         case (14): {Model = 5; break;}   //BA14
         case (30): {Model = 6; break;}   //BA30
-        default: {Model = 3; break;}    //BA05
+        default:   {Model = 3; break;}   //BA05
     }
 }
 
@@ -123,17 +130,7 @@ uint8_t MS5803::begin(uint8_t address, int MaxPressure)
     // Reset address and pressure if given in begin
     _address = address; //set interface used for communication
 
-    switch(MaxPressure)
-    {
-        // Set model number based on maximum pressure range
-        case (1): {Model = 1; break;}    //BA01
-        case (2): {Model = 2; break;}    //BA02
-        case (5): {Model = 3; break;}    //BA05
-        case (7): {Model = 4; break;}    //BA07
-        case (14): {Model = 5; break;}   //BA14
-        case (30): {Model = 6; break;}   //BA30
-        default: {Model = 3; break;}    //BA05
-    }
+    setModel(MaxPressure);
 
     return begin();
 }
@@ -165,8 +162,7 @@ float MS5803::getPressure(precision _precision)
     getMeasurements(_precision);
     float pressure_reported;
     pressure_reported = _pressure_actual;
-    // pressure_reported = pressure_reported / 10;
-    pressure_reported = pressure_reported / (float(ConvCoef[4])/100.0); //05BA model!
+    pressure_reported = pressure_reported / (float(ConvCoef[4])/100.0);
     return pressure_reported;
 }
 
@@ -231,10 +227,8 @@ void MS5803::getMeasurements(precision _precision)
     // Now bring it all together to apply offsets
 
 
-    OFF = ((int64_t)coefficient[2] << ConvCoef[0]) + (((coefficient[4] * (int64_t)dT)) >> ConvCoef[1]);    //05BA model!
-    SENS = ((int64_t)coefficient[1] << ConvCoef[2]) + (((coefficient[3] * (int64_t)dT)) >> ConvCoef[3]); //05BA model!
-    // OFF = ((int64_t)coefficient[2] << 16) + (((coefficient[4] * (int64_t)dT)) >> 7);
-    // SENS = ((int64_t)coefficient[1] << 15) + (((coefficient[3] * (int64_t)dT)) >> 8);
+    OFF = ((int64_t)coefficient[2] << ConvCoef[0]) + (((coefficient[4] * (int64_t)dT)) >> ConvCoef[1]);
+    SENS = ((int64_t)coefficient[1] << ConvCoef[2]) + (((coefficient[3] * (int64_t)dT)) >> ConvCoef[3]);
 
     temp_calc = temp_calc - T2;
     OFF = OFF - OFF2;
