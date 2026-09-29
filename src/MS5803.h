@@ -82,7 +82,7 @@ private:
 
     uint8_t _address;         // Variable used to store I2C device address.
     uint16_t coefficient[8];// Coefficients;
-    uint16_t ConvCoef[17]; //Coefficients for data conversion, one row of ConvTable
+    uint16_t ConvCoef[18]; //Coefficients for data conversion, one row of ConvTable
 
     void getMeasurements(precision _precision);
 
