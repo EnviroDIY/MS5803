@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the library's conversion table against the six MS5803 datasheets.
 
-src/MS5803.cpp holds one seventeen-entry row per variant, and every entry is an
+src/MS5803.cpp holds one eighteen-entry row per variant, and every entry is an
 exponent or a multiplier taken from that variant's calculation pages. A wrong
 entry produces a confidently wrong pressure and raises no fault, so the table is
 checked here rather than trusted.
@@ -45,34 +45,38 @@ import sys
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[2] / "src" / "MS5803.cpp"
+# The Walrus firmware carries the same table, because a sensor compensates its
+# own reading. Checked here too: one reference, both copies. Its path is given
+# relative to the workspace these repositories sit in side by side.
+FIRMWARE = Path(__file__).resolve().parents[3] / "Project-Walrus" / "Firmware" / "Walrus_I2C_5BA" / "Walrus_I2C_5BA.ino"
 
 # Per variant: the datasheet's typical C1..C6, its worked D1 and D2, the
 # pressure and temperature that page prints, and the seventeen-entry table.
 VARIANTS = {
     "01BA": dict(
         C=[40127, 36924, 23317, 23282, 33464, 28312], D1=9085466, D2=8569150, P=100009, T=2007,
-        table=[16, 7, 15, 8, 10000, 1, 31, 3, 0, 7, 3, 0, 2, 0, 0, 0, 15]),
+        table=[16, 7, 15, 8, 10000, 1, 31, 3, 0, 7, 3, 0, 2, 0, 0, 0, 15, 1]),
     "02BA": dict(
         C=[46372, 43981, 29059, 27842, 31553, 28165], D1=6465444, D2=8077636, P=110002, T=2000,
-        table=[17, 6, 16, 7, 10000, 1, 31, 61, 4, 2, 0, 20, 12, 0, 0, 0, 15]),
+        table=[17, 6, 16, 7, 10000, 1, 31, 61, 4, 2, 0, 20, 12, 0, 0, 0, 15, 0]),
     "05BA": dict(
         C=[32428, 28100, 44250, 20003, 32747, 28266], D1=5251266, D2=8383686, P=100002, T=2001,
-        table=[18, 5, 17, 7, 10000, 3, 33, 3, 3, 7, 3, 0, 3, 0, 0, 0, 15]),
+        table=[18, 5, 17, 7, 10000, 3, 33, 3, 3, 7, 3, 0, 3, 0, 0, 0, 15, 0]),
     "07BA": dict(
         C=[46128, 40903, 27765, 26239, 31876, 28261], D1=10332180, D2=8592698, P=599209, T=3456,
-        table=[18, 5, 17, 6, 10000, 3, 33, 3, 3, 7, 3, 0, 3, 0, 0, 0, 15]),
+        table=[18, 5, 17, 6, 10000, 3, 33, 3, 3, 7, 3, 0, 3, 0, 0, 0, 15, 0]),
     "14BA": dict(
         C=[46546, 42845, 29751, 29457, 32745, 29059], D1=4311550, D2=8387300, P=10005, T=2015,
-        table=[16, 7, 15, 8, 1000, 3, 33, 3, 1, 5, 3, 7, 4, 7, 37, 1, 15]),
+        table=[16, 7, 15, 8, 1000, 3, 33, 3, 1, 5, 3, 7, 4, 7, 37, 1, 15, 0]),
     "30BA": dict(
         C=[29112, 26814, 19125, 17865, 32057, 31305], D1=4944364, D2=8198974, P=59998, T=1971,
-        table=[16, 7, 15, 8, 1000, 3, 33, 3, 1, 5, 3, 7, 4, 7, 37, 1, 13]),
+        table=[16, 7, 15, 8, 1000, 3, 33, 3, 1, 5, 3, 7, 4, 7, 37, 1, 13, 0]),
 }
 
 MODEL = {"01BA": 1, "02BA": 2, "05BA": 3, "07BA": 4, "14BA": 5, "30BA": 6}
 
 
-def compensate(C, cc, D1, D2, model):
+def compensate(C, cc, D1, D2, model=0):
     """The flow chart's arithmetic, in the library's order of operations."""
     C1, C2, C3, C4, C5, C6 = C
     dT = D2 - (C5 << 8)
@@ -97,10 +101,13 @@ def compensate(C, cc, D1, D2, model):
     return T - T2, ((SENS * D1) // 2097152 - OFF) // (1 << cc[16])
 
 
-def declared_table():
-    """ConvTable as src/MS5803.cpp declares it, one list per model."""
-    src = SOURCE.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"ConvTable\[6\]\[17\] = \{(.*?)\n\};", src, re.S)
+def declared_table(path=None):
+    """ConvTable as a source file declares it, one list per model."""
+    path = path or SOURCE
+    if not path.exists():
+        return "missing"
+    src = path.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"ConvTable\[6\]\[18\][^=]*= \{(.*?)\n\};", src, re.S)
     if not m:
         return None
     return [[int(v) for v in row.split(",") if v.strip()]
@@ -157,21 +164,39 @@ def main(argv):
     failures = 0
     print(f"ConvTable in {SOURCE.name}, against the datasheets:\n")
     declared = declared_table()
-    if declared is None:
-        print("  ConvTable[6][17] not found in the source")
+    if declared in (None, "missing"):
+        print("  ConvTable[6][18] not found in the source")
         return 1
     for i, (name, v) in enumerate(VARIANTS.items()):
         got, want = declared[i] if i < len(declared) else None, v["table"]
         if got is None:
             print(f"{name:>8}  row {i} missing"); failures += 1
-        elif len(got) != 17:
-            print(f"{name:>8}  row {i} has {len(got)} entries, not 17: {got}"); failures += 1
+        elif len(got) != 18:
+            print(f"{name:>8}  row {i} has {len(got)} entries, not 18: {got}"); failures += 1
         elif got != want:
             diff = "; ".join(f"[{k}] {a} should be {b}"
                              for k, (a, b) in enumerate(zip(got, want)) if a != b)
             print(f"{name:>8}  {diff}"); failures += 1
         else:
             print(f"{name:>8}  matches")
+
+    print(f"\nConvTable in {FIRMWARE.name}, against the same datasheets:\n")
+    fw = declared_table(FIRMWARE)
+    if fw == "missing":
+        print(f"  {FIRMWARE} is not beside this repository; skipped")
+    elif fw is None:
+        print(f"  {FIRMWARE.name} declares no ConvTable[6][18]"); failures += 1
+    else:
+        for i, (name, v) in enumerate(VARIANTS.items()):
+            got, want = (fw[i] if i < len(fw) else None), v["table"]
+            if got is None:
+                print(f"{name:>8}  row {i} missing"); failures += 1
+            elif got != want:
+                diff = "; ".join(f"[{k}] {a} should be {b}"
+                                 for k, (a, b) in enumerate(zip(got, want)) if a != b)
+                print(f"{name:>8}  {diff or 'length %d, not 18' % len(got)}"); failures += 1
+            else:
+                print(f"{name:>8}  matches")
 
     print("\nWorked example from each datasheet:\n")
     print(f"{'variant':>8} {'P wanted':>10} {'P got':>10} {'T wanted':>10} {'T got':>8}  verdict")
