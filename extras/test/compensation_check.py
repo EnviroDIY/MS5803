@@ -114,6 +114,45 @@ def declared_table(path=None):
             for row in re.findall(r"\{([^}]*)\}", m.group(1))]
 
 
+def check_firmware_defines():
+    """The Walrus firmware's live COEF0..COEF15, against the datasheets.
+
+    The firmware is built for one variant: sixteen uncommented #defines, with
+    the other variants' blocks commented out below them. So the check is which
+    variant those sixteen are, and whether they are that variant's numbers
+    exactly. It cannot reach the last two constants, because the firmware has
+    neither: it hardcodes the final divisor at 32768 and carries no
+    above-45 C term at all, which is right for the 05BA and wrong for a 30BA or
+    an 01BA. That is a gap in the firmware, not in this check.
+    """
+    if not FIRMWARE.exists():
+        print(f"  {FIRMWARE} is not beside this repository; skipped")
+        return 0
+    src = FIRMWARE.read_text(encoding="utf-8", errors="replace")
+    live = {}
+    for m in re.finditer(r"^#define COEF(\d+)\s+(\d+)", src, re.M):
+        live[int(m.group(1))] = int(m.group(2))
+    if len(live) != 16:
+        print(f"  found {len(live)} live COEF defines, expected 16"); return 1
+    got = [live[i] for i in range(16)]
+    for name, v in VARIANTS.items():
+        if got == v["table"][:16]:
+            print(f"  built for the MS5803-{name}, and every constant matches its datasheet")
+            if v["table"][16] != 15:
+                print(f"  BUT the firmware hardcodes the final divisor at 32768 and the "
+                      f"{name} needs 2^{v['table'][16]}")
+                return 1
+            if v["table"][17]:
+                print(f"  BUT the {name} needs an above-45 C term the firmware does not have")
+                return 1
+            return 0
+    print("  matches no variant's datasheet constants:")
+    for name, v in VARIANTS.items():
+        diff = [f"COEF{i}={got[i]} not {w}" for i, w in enumerate(v["table"][:16]) if got[i] != w]
+        print(f"    against the {name}: " + "; ".join(diff))
+    return 1
+
+
 def d2_for(C, cc, model, celsius_x100):
     """The D2 whose *reported* temperature is this, after the T2 correction."""
     lo, hi = 0, 1 << 24
@@ -180,23 +219,8 @@ def main(argv):
         else:
             print(f"{name:>8}  matches")
 
-    print(f"\nConvTable in {FIRMWARE.name}, against the same datasheets:\n")
-    fw = declared_table(FIRMWARE)
-    if fw == "missing":
-        print(f"  {FIRMWARE} is not beside this repository; skipped")
-    elif fw is None:
-        print(f"  {FIRMWARE.name} declares no ConvTable[6][18]"); failures += 1
-    else:
-        for i, (name, v) in enumerate(VARIANTS.items()):
-            got, want = (fw[i] if i < len(fw) else None), v["table"]
-            if got is None:
-                print(f"{name:>8}  row {i} missing"); failures += 1
-            elif got != want:
-                diff = "; ".join(f"[{k}] {a} should be {b}"
-                                 for k, (a, b) in enumerate(zip(got, want)) if a != b)
-                print(f"{name:>8}  {diff or 'length %d, not 18' % len(got)}"); failures += 1
-            else:
-                print(f"{name:>8}  matches")
+    print(f"\nThe live #define COEF block in {FIRMWARE.name}:\n")
+    failures += check_firmware_defines()
 
     print("\nWorked example from each datasheet:\n")
     print(f"{'variant':>8} {'P wanted':>10} {'P got':>10} {'T wanted':>10} {'T got':>8}  verdict")
