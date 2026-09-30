@@ -114,43 +114,55 @@ def declared_table(path=None):
             for row in re.findall(r"\{([^}]*)\}", m.group(1))]
 
 
-def check_firmware_defines():
-    """The Walrus firmware's live COEF0..COEF15, against the datasheets.
+# The names setMS5803Model() assigns, in the order the reference rows use, and
+# the bar figure in each variant's order code, which is what it switches on.
+CONSTANTS = ["OffShift", "OffDtShift", "SensShift", "SensDtShift", "MbarDivisor",
+             "T2MultCold", "T2ShiftCold", "Off2MultCold", "Off2ShiftCold",
+             "Sens2MultCold", "Sens2ShiftCold", "Off2MultVeryCold", "Sens2MultVeryCold",
+             "T2MultHot", "T2ShiftHot", "Off2MultHot", "PShift", "Sens2MultVeryHot"]
+BAR = {"01BA": 1, "02BA": 2, "05BA": 5, "07BA": 7, "14BA": 14, "30BA": 30}
 
-    The firmware is built for one variant: sixteen uncommented #defines, with
-    the other variants' blocks commented out below them. So the check is which
-    variant those sixteen are, and whether they are that variant's numbers
-    exactly. It cannot reach the last two constants, because the firmware has
-    neither: it hardcodes the final divisor at 32768 and carries no
-    above-45 C term at all, which is right for the 05BA and wrong for a 30BA or
-    an 01BA. That is a gap in the firmware, not in this check.
+
+def check_firmware():
+    """The Walrus firmware's setMS5803Model(), against the datasheets.
+
+    The firmware names the constants and a switch gives them values, one case
+    per part. Two things are checked: that every case's numbers are that
+    variant's, and that no case omits a constant - eighteen assignments written
+    out six times is eighteen chances to leave one out, and an omission would
+    silently inherit whatever the last case set.
+
+    MbarDivisor is the plain divisor here (100, or 10 on the 14BA and 30BA)
+    where the reference rows carry it, so the two agree without scaling.
     """
     if not FIRMWARE.exists():
         print(f"  {FIRMWARE} is not beside this repository; skipped")
         return 0
     src = FIRMWARE.read_text(encoding="utf-8", errors="replace")
-    live = {}
-    for m in re.finditer(r"^#define COEF(\d+)\s+(\d+)", src, re.M):
-        live[int(m.group(1))] = int(m.group(2))
-    if len(live) != 16:
-        print(f"  found {len(live)} live COEF defines, expected 16"); return 1
-    got = [live[i] for i in range(16)]
+    m = re.search(r"void\s+setMS5803Model\([^)]*\)[\s\S]*?\n\{(.*?)\n\}", src, re.S)
+    if not m:
+        print(f"  {FIRMWARE.name} holds no setMS5803Model() to read")
+        return 1
+    cases = {}
+    for case in re.finditer(r"case \((\d+)\):(.*?)break;", m.group(1), re.S):
+        cases[int(case.group(1))] = {n: int(v) for n, v
+                                     in re.findall(r"(\w+)\s*=\s*(\d+);", case.group(2))}
+    bad = 0
     for name, v in VARIANTS.items():
-        if got == v["table"][:16]:
-            print(f"  built for the MS5803-{name}, and every constant matches its datasheet")
-            if v["table"][16] != 15:
-                print(f"  BUT the firmware hardcodes the final divisor at 32768 and the "
-                      f"{name} needs 2^{v['table'][16]}")
-                return 1
-            if v["table"][17]:
-                print(f"  BUT the {name} needs an above-45 C term the firmware does not have")
-                return 1
-            return 0
-    print("  matches no variant's datasheet constants:")
-    for name, v in VARIANTS.items():
-        diff = [f"COEF{i}={got[i]} not {w}" for i, w in enumerate(v["table"][:16]) if got[i] != w]
-        print(f"    against the {name}: " + "; ".join(diff))
-    return 1
+        got = cases.get(BAR[name])
+        if got is None:
+            print(f"{name:>8}  no case for {BAR[name]} bar"); bad += 1; continue
+        missing = [n for n in CONSTANTS if n not in got]
+        if missing:
+            print(f"{name:>8}  never assigned: {', '.join(missing)}"); bad += 1; continue
+        want = list(v["table"])
+        want[4] = 100 if want[4] == 10000 else 10        # the reference keeps 100 x the divisor
+        diff = [f"{n} is {got[n]}, should be {w}" for n, w in zip(CONSTANTS, want) if got[n] != w]
+        if diff:
+            print(f"{name:>8}  " + "; ".join(diff)); bad += 1
+        else:
+            print(f"{name:>8}  matches")
+    return bad
 
 
 def d2_for(C, cc, model, celsius_x100):
@@ -219,8 +231,8 @@ def main(argv):
         else:
             print(f"{name:>8}  matches")
 
-    print(f"\nThe live #define COEF block in {FIRMWARE.name}:\n")
-    failures += check_firmware_defines()
+    print(f"\nsetMS5803Model() in {FIRMWARE.name}, against the same datasheets:\n")
+    failures += check_firmware()
 
     print("\nWorked example from each datasheet:\n")
     print(f"{'variant':>8} {'P wanted':>10} {'P got':>10} {'T wanted':>10} {'T got':>8}  verdict")
