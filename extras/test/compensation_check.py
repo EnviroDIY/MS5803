@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""Check the library's conversion table against the six MS5803 datasheets.
+"""Check the library and the firmware against the six MS5803 datasheets.
 
-src/MS5803.cpp holds one eighteen-entry row per variant, and every entry is an
-exponent or a multiplier taken from that variant's calculation pages. A wrong
-entry produces a confidently wrong pressure and raises no fault, so the table is
-checked here rather than trusted.
+Both name eighteen constants and set them with a switch, one case per variant,
+and every one is an exponent or a multiplier taken from that variant's
+calculation pages. A wrong number produces a confidently wrong pressure and
+raises no fault, so both copies are checked here rather than trusted.
 
     python3 compensation_check.py
     python3 compensation_check.py --emit     # regression cases for ms5803_test.cpp
 
 Three things run:
 
-1. Every row of ConvTable in src/MS5803.cpp is compared with the reference
-   below, entry by entry.
+1. Every case of MS5803::setModel() in src/MS5803.cpp and of setMS5803Model()
+   in the Walrus firmware is compared with the reference below, constant by
+   constant, and a case that omits a constant is reported as well.
 
 2. Each variant's worked example is reproduced. Every datasheet prints one set
    of D1 and D2 with the coefficients that produced them and the pressure and
@@ -45,13 +46,15 @@ import sys
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[2] / "src" / "MS5803.cpp"
-# The Walrus firmware carries the same table, because a sensor compensates its
-# own reading. Checked here too: one reference, both copies. Its path is given
-# relative to the workspace these repositories sit in side by side.
+# The Walrus firmware carries the same constants, because a sensor compensates
+# its own reading. Checked here too: one reference, both copies. Its path is
+# given relative to the workspace these repositories sit in side by side.
 FIRMWARE = Path(__file__).resolve().parents[3] / "Project-Walrus" / "Firmware" / "Walrus_I2C_5BA" / "Walrus_I2C_5BA.ino"
 
 # Per variant: the datasheet's typical C1..C6, its worked D1 and D2, the
-# pressure and temperature that page prints, and the seventeen-entry table.
+# pressure and temperature that page prints, and the eighteen-entry reference
+# row. The row keeps 100 times the mbar divisor at index 4, which is the form
+# compensate() and emit() use; check_constants() scales it when it compares.
 VARIANTS = {
     "01BA": dict(
         C=[40127, 36924, 23317, 23282, 33464, 28312], D1=9085466, D2=8569150, P=100009, T=2007,
@@ -101,21 +104,8 @@ def compensate(C, cc, D1, D2, model=0):
     return T - T2, ((SENS * D1) // 2097152 - OFF) // (1 << cc[16])
 
 
-def declared_table(path=None):
-    """ConvTable as a source file declares it, one list per model."""
-    path = path or SOURCE
-    if not path.exists():
-        return "missing"
-    src = path.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"ConvTable\[6\]\[18\][^=]*= \{(.*?)\n\};", src, re.S)
-    if not m:
-        return None
-    return [[int(v) for v in row.split(",") if v.strip()]
-            for row in re.findall(r"\{([^}]*)\}", m.group(1))]
-
-
-# The names setMS5803Model() assigns, in the order the reference rows use, and
-# the bar figure in each variant's order code, which is what it switches on.
+# The names both switches assign, in the order the reference rows use, and the
+# bar figure in each variant's order code, which is what they switch on.
 CONSTANTS = ["OffShift", "OffDtShift", "SensShift", "SensDtShift", "MbarDivisor",
              "T2MultCold", "T2ShiftCold", "Off2MultCold", "Off2ShiftCold",
              "Sens2MultCold", "Sens2ShiftCold", "Off2MultVeryCold", "Sens2MultVeryCold",
@@ -123,25 +113,25 @@ CONSTANTS = ["OffShift", "OffDtShift", "SensShift", "SensDtShift", "MbarDivisor"
 BAR = {"01BA": 1, "02BA": 2, "05BA": 5, "07BA": 7, "14BA": 14, "30BA": 30}
 
 
-def check_firmware():
-    """The Walrus firmware's setMS5803Model(), against the datasheets.
+def check_constants(path, signature):
+    """One switch of named constants, against the datasheets.
 
-    The firmware names the constants and a switch gives them values, one case
-    per part. Two things are checked: that every case's numbers are that
-    variant's, and that no case omits a constant - eighteen assignments written
-    out six times is eighteen chances to leave one out, and an omission would
-    silently inherit whatever the last case set.
+    Both the library and the firmware name the constants and let a switch give
+    them values, one case per part. Two things are checked: that every case's
+    numbers are that variant's, and that no case omits a constant - eighteen
+    assignments written out six times is eighteen chances to leave one out, and
+    an omission would silently inherit whatever the last case set.
 
-    MbarDivisor is the plain divisor here (100, or 10 on the 14BA and 30BA)
-    where the reference rows carry it, so the two agree without scaling.
+    MbarDivisor is the plain divisor in the source (100, or 10 on the 14BA and
+    30BA) where the reference rows carry 100 times it, so it is scaled here.
     """
-    if not FIRMWARE.exists():
-        print(f"  {FIRMWARE} is not beside this repository; skipped")
+    if not path.exists():
+        print(f"  {path} is not beside this repository; skipped")
         return 0
-    src = FIRMWARE.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"void\s+setMS5803Model\([^)]*\)[\s\S]*?\n\{(.*?)\n\}", src, re.S)
+    src = path.read_text(encoding="utf-8", errors="replace")
+    m = re.search(signature + r"[\s\S]*?\n\{(.*?)\n\}", src, re.S)
     if not m:
-        print(f"  {FIRMWARE.name} holds no setMS5803Model() to read")
+        print(f"  {path.name} holds no such function to read")
         return 1
     cases = {}
     for case in re.finditer(r"case \((\d+)\):(.*?)break;", m.group(1), re.S):
@@ -213,26 +203,11 @@ def main(argv):
         return 0
 
     failures = 0
-    print(f"ConvTable in {SOURCE.name}, against the datasheets:\n")
-    declared = declared_table()
-    if declared in (None, "missing"):
-        print("  ConvTable[6][18] not found in the source")
-        return 1
-    for i, (name, v) in enumerate(VARIANTS.items()):
-        got, want = declared[i] if i < len(declared) else None, v["table"]
-        if got is None:
-            print(f"{name:>8}  row {i} missing"); failures += 1
-        elif len(got) != 18:
-            print(f"{name:>8}  row {i} has {len(got)} entries, not 18: {got}"); failures += 1
-        elif got != want:
-            diff = "; ".join(f"[{k}] {a} should be {b}"
-                             for k, (a, b) in enumerate(zip(got, want)) if a != b)
-            print(f"{name:>8}  {diff}"); failures += 1
-        else:
-            print(f"{name:>8}  matches")
+    print(f"MS5803::setModel() in {SOURCE.name}, against the datasheets:\n")
+    failures += check_constants(SOURCE, r"void\s+MS5803::setModel\([^)]*\)")
 
     print(f"\nsetMS5803Model() in {FIRMWARE.name}, against the same datasheets:\n")
-    failures += check_firmware()
+    failures += check_constants(FIRMWARE, r"void\s+setMS5803Model\([^)]*\)")
 
     print("\nWorked example from each datasheet:\n")
     print(f"{'variant':>8} {'P wanted':>10} {'P got':>10} {'T wanted':>10} {'T got':>8}  verdict")
@@ -245,7 +220,7 @@ def main(argv):
     if failures:
         print(f"\n{failures} check(s) failed", file=sys.stderr)
         return 1
-    print("\nThe table matches the datasheets, and every variant reproduces its worked example.")
+    print("\nBoth copies match the datasheets, and every variant reproduces its worked example.")
     return 0
 
 
