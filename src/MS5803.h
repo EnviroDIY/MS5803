@@ -76,17 +76,39 @@ public:
     float getPressure(precision _precision);
 
 private:
-    int Model;
     int32_t _temperature_actual;
     int32_t _pressure_actual;
 
     uint8_t _address;         // Variable used to store I2C device address.
     uint16_t coefficient[8];// Coefficients;
-    uint16_t ConvCoef[18]; //Coefficients for data conversion, one row of ConvTable
+
+    // The calibration constants for the part that is fitted. Every variant is
+    // converted by the same equations in getMeasurements(); only these numbers
+    // differ, and setModel() gives them their values. Each is read from that
+    // variant's "PRESSURE AND TEMPERATURE CALCULATION" and "SECOND ORDER
+    // TEMPERATURE COMPENSATION" pages.
+    uint8_t OffShift;           // OFF  = C2 << OffShift + (C4 * dT) >> OffDtShift
+    uint8_t OffDtShift;
+    uint8_t SensShift;          // SENS = C1 << SensShift + (C3 * dT) >> SensDtShift
+    uint8_t SensDtShift;
+    uint8_t MbarDivisor;        // the converted value divided by this is mbar
+    uint8_t T2MultCold;         // below 20 C
+    uint8_t T2ShiftCold;
+    uint8_t Off2MultCold;
+    uint8_t Off2ShiftCold;
+    uint8_t Sens2MultCold;
+    uint8_t Sens2ShiftCold;
+    uint8_t Off2MultVeryCold;   // below -15 C
+    uint8_t Sens2MultVeryCold;
+    uint8_t T2MultHot;          // 20 C and above
+    uint8_t T2ShiftHot;
+    uint8_t Off2MultHot;
+    uint8_t Sens2MultVeryHot;   // above 45 C, the 01BA alone
+    uint8_t PShift;             // P = (D1 * SENS / 2^21 - OFF) / 2^PShift
 
     void getMeasurements(precision _precision);
 
-    void setModel(int MaxPressure);   // the ConvTable row for a part's bar figure
+    void setModel(int MaxPressure);   // the constants for a part's bar figure
     void sendCommand(uint8_t command);    // General I2C send command function
     uint32_t getADCconversion(measurement _measurement, precision _precision);    // Retrieve ADC result
 

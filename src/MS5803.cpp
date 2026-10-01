@@ -19,34 +19,6 @@ Distributed as-is; no warranty is given.
 #include <Wire.h> // Wire library is used for I2C
 #include "MS5803.h"
 
-// Conversion constants per variant, one row per model, taken from that
-// variant's "PRESSURE AND TEMPERATURE CALCULATION" and "SECOND ORDER
-// TEMPERATURE COMPENSATION" pages. The entries are:
-//
-//   [0]  OFF  = C2 << [0]                [9]  SENS2 low-temperature multiplier
-//   [1]         + (C4 * dT) >> [1]       [10] SENS2 low-temperature divisor exponent
-//   [2]  SENS = C1 << [2]                [11] OFF2 very-low-temperature multiplier
-//   [3]         + (C3 * dT) >> [3]       [12] SENS2 very-low-temperature multiplier
-//   [4]  100 x the divisor from the      [13] T2 high-temperature multiplier
-//        compensated value to mbar       [14] T2 high-temperature divisor exponent
-//   [5]  T2 low-temperature multiplier   [15] OFF2 high-temperature multiplier
-//   [6]  T2 low-temperature divisor exp  [16] final pressure divisor exponent
-//                                        [17] SENS2 very-high-temperature multiplier
-//   [7]  OFF2 low-temperature multiplier
-//   [8]  OFF2 low-temperature divisor exponent
-//
-// A wrong entry gives a confidently wrong pressure and raises no fault, so
-// extras/test/compensation_check.py reads this table out of this file and
-// compares it with the datasheets entry by entry. Run it after any edit here.
-static const uint16_t ConvTable[6][18] = {
-    {16, 7, 15, 8, 10000, 1, 31,  3, 0, 7, 3,  0,  2, 0,  0, 0, 15, 1},  //01BA
-    {17, 6, 16, 7, 10000, 1, 31, 61, 4, 2, 0, 20, 12, 0,  0, 0, 15, 0},  //02BA
-    {18, 5, 17, 7, 10000, 3, 33,  3, 3, 7, 3,  0,  3, 0,  0, 0, 15, 0},  //05BA
-    {18, 5, 17, 6, 10000, 3, 33,  3, 3, 7, 3,  0,  3, 0,  0, 0, 15, 0},  //07BA
-    {16, 7, 15, 8,  1000, 3, 33,  3, 1, 5, 3,  7,  4, 7, 37, 1, 15, 0},  //14BA
-    {16, 7, 15, 8,  1000, 3, 33,  3, 1, 5, 3,  7,  4, 7, 37, 1, 13, 0},  //30BA
-};
-
 // NOT IMPLEMENTED, and it applies to the 07BA alone: that part carries a third
 // compensation stage above 1100 mbar, and its PROM word 7 is not only the CRC.
 // Bits 0-3 are the checksum, bits 4-9 are C7 and bits 10-15 are C8, and
@@ -71,19 +43,145 @@ MS5803::MS5803(uint8_t address, int MaxPressure)
 }
 
 void MS5803::setModel(int MaxPressure)
-// The row of ConvTable this part's constants live in, from the bar figure in
-// its order code. One place, because two copies of a table of variants is how
-// a variant gets added to one of them.
+// The calibration constants for the part that is fitted, from the bar figure in
+// its order code. A wrong number here gives a confidently wrong pressure and
+// raises no fault, so extras/test/compensation_check.py compares every one of
+// them with the datasheets. Run it after any edit.
 {
     switch(MaxPressure)
     {
-        case (1):  {Model = 1; break;}   //BA01
-        case (2):  {Model = 2; break;}   //BA02
-        case (5):  {Model = 3; break;}   //BA05
-        case (7):  {Model = 4; break;}   //BA07
-        case (14): {Model = 5; break;}   //BA14
-        case (30): {Model = 6; break;}   //BA30
-        default:   {Model = 3; break;}   //BA05
+        case (1):   // MS5803-01BA
+            OffShift = 16;
+            OffDtShift = 7;
+            SensShift = 15;
+            SensDtShift = 8;
+            MbarDivisor = 100;
+            T2MultCold = 1;
+            T2ShiftCold = 31;
+            Off2MultCold = 3;
+            Off2ShiftCold = 0;
+            Sens2MultCold = 7;
+            Sens2ShiftCold = 3;
+            Off2MultVeryCold = 0;
+            Sens2MultVeryCold = 2;
+            T2MultHot = 0;
+            T2ShiftHot = 0;
+            Off2MultHot = 0;
+            Sens2MultVeryHot = 1;
+            PShift = 15;
+            break;
+
+        case (2):   // MS5803-02BA
+            OffShift = 17;
+            OffDtShift = 6;
+            SensShift = 16;
+            SensDtShift = 7;
+            MbarDivisor = 100;
+            T2MultCold = 1;
+            T2ShiftCold = 31;
+            Off2MultCold = 61;
+            Off2ShiftCold = 4;
+            Sens2MultCold = 2;
+            Sens2ShiftCold = 0;
+            Off2MultVeryCold = 20;
+            Sens2MultVeryCold = 12;
+            T2MultHot = 0;
+            T2ShiftHot = 0;
+            Off2MultHot = 0;
+            Sens2MultVeryHot = 0;
+            PShift = 15;
+            break;
+
+        //FIX! A bar figure this library does not know takes the 05BA's
+        // constants, as it always has, which gives a confidently wrong pressure
+        // and raises nothing. The Walrus firmware answers this with a known-model
+        // flag and a notice; whether this library returns NAN instead is a
+        // separate decision, kept out of this change so that the change itself
+        // is provably behaviour-preserving.
+        default:    // and any bar figure this library does not know, as before
+        case (5):   // MS5803-05BA
+            OffShift = 18;
+            OffDtShift = 5;
+            SensShift = 17;
+            SensDtShift = 7;
+            MbarDivisor = 100;
+            T2MultCold = 3;
+            T2ShiftCold = 33;
+            Off2MultCold = 3;
+            Off2ShiftCold = 3;
+            Sens2MultCold = 7;
+            Sens2ShiftCold = 3;
+            Off2MultVeryCold = 0;
+            Sens2MultVeryCold = 3;
+            T2MultHot = 0;
+            T2ShiftHot = 0;
+            Off2MultHot = 0;
+            Sens2MultVeryHot = 0;
+            PShift = 15;
+            break;
+
+        case (7):   // MS5803-07BA
+            OffShift = 18;
+            OffDtShift = 5;
+            SensShift = 17;
+            SensDtShift = 6;
+            MbarDivisor = 100;
+            T2MultCold = 3;
+            T2ShiftCold = 33;
+            Off2MultCold = 3;
+            Off2ShiftCold = 3;
+            Sens2MultCold = 7;
+            Sens2ShiftCold = 3;
+            Off2MultVeryCold = 0;
+            Sens2MultVeryCold = 3;
+            T2MultHot = 0;
+            T2ShiftHot = 0;
+            Off2MultHot = 0;
+            Sens2MultVeryHot = 0;
+            PShift = 15;
+            break;
+
+        case (14):   // MS5803-14BA
+            OffShift = 16;
+            OffDtShift = 7;
+            SensShift = 15;
+            SensDtShift = 8;
+            MbarDivisor = 10;
+            T2MultCold = 3;
+            T2ShiftCold = 33;
+            Off2MultCold = 3;
+            Off2ShiftCold = 1;
+            Sens2MultCold = 5;
+            Sens2ShiftCold = 3;
+            Off2MultVeryCold = 7;
+            Sens2MultVeryCold = 4;
+            T2MultHot = 7;
+            T2ShiftHot = 37;
+            Off2MultHot = 1;
+            Sens2MultVeryHot = 0;
+            PShift = 15;
+            break;
+
+        case (30):   // MS5803-30BA
+            OffShift = 16;
+            OffDtShift = 7;
+            SensShift = 15;
+            SensDtShift = 8;
+            MbarDivisor = 10;
+            T2MultCold = 3;
+            T2ShiftCold = 33;
+            Off2MultCold = 3;
+            Off2ShiftCold = 1;
+            Sens2MultCold = 5;
+            Sens2ShiftCold = 3;
+            Off2MultVeryCold = 7;
+            Sens2MultVeryCold = 4;
+            T2MultHot = 7;
+            T2ShiftHot = 37;
+            Off2MultHot = 1;
+            Sens2MultVeryHot = 0;
+            PShift = 13;
+            break;
     }
 }
 
@@ -116,8 +214,6 @@ uint8_t MS5803::begin()
        // Serial.print("= ");
        // Serial.println(coefficient[i]);
     }
-
-    memcpy(ConvCoef, ConvTable[Model - 1], sizeof(ConvCoef));
 
     Wire.beginTransmission((int)_address);
     return Wire.endTransmission(); //Return sucess or failue of I2C connection
@@ -162,7 +258,10 @@ float MS5803::getPressure(precision _precision)
     getMeasurements(_precision);
     float pressure_reported;
     pressure_reported = _pressure_actual;
-    pressure_reported = pressure_reported / (float(ConvCoef[4])/100.0);
+    // Divided as a double, which is what float(ConvCoef[4])/100.0 was before
+    // this constant carried the divisor itself: a float division here would
+    // round once where that rounded twice, and the harness compares bytes.
+    pressure_reported = pressure_reported / double(MbarDivisor);
     return pressure_reported;
 }
 
@@ -197,45 +296,45 @@ void MS5803::getMeasurements(precision _precision)
     // If temp_calc is below 20.0C
         //LOW TEMP
     {
-        T2 = ConvCoef[5]* (((int64_t)dT * dT) >> ConvCoef[6]);
-        OFF2 = ConvCoef[7] * TempSq / ((int64_t)1 << ConvCoef[8]);
-        SENS2 = ConvCoef[9] * TempSq / ((int64_t)1 << ConvCoef[10]);
+        T2 = T2MultCold* (((int64_t)dT * dT) >> T2ShiftCold);
+        OFF2 = Off2MultCold * TempSq / ((int64_t)1 << Off2ShiftCold);
+        SENS2 = Sens2MultCold * TempSq / ((int64_t)1 << Sens2ShiftCold);
 
         if(temp_calc < -1500)
         // If temp_calc is below -15.0C
             //VERY LOW TEMP
         {
             int64_t ColdSq = (int64_t)(temp_calc + 1500) * (temp_calc + 1500);
-            OFF2 = OFF2 + ConvCoef[11] * ColdSq;
-            SENS2 = SENS2 + ConvCoef[12] * ColdSq;
+            OFF2 = OFF2 + Off2MultVeryCold * ColdSq;
+            SENS2 = SENS2 + Sens2MultVeryCold * ColdSq;
         }
     }
     else
     // If temp_calc is above 20.0C
         //HIGH TEMP
     {
-        T2 = ConvCoef[13] * ((int64_t)dT * dT) / ((int64_t)1 << ConvCoef[14]);
-        OFF2 = ConvCoef[15] * TempSq / 16;
+        T2 = T2MultHot * ((int64_t)dT * dT) / ((int64_t)1 << T2ShiftHot);
+        OFF2 = Off2MultHot * TempSq / 16;
         SENS2 = 0;
 
         //Entry 17 is 1 on the 01BA, whose flow chart alone carries this term,
         //and 0 on every other variant, where it subtracts nothing. A constant
         //rather than a test on the model.
-        if(temp_calc > 4500) SENS2 = SENS2 - ConvCoef[17] * ((int64_t)(temp_calc - 4500) * (temp_calc - 4500))/8;
+        if(temp_calc > 4500) SENS2 = SENS2 - Sens2MultVeryHot * ((int64_t)(temp_calc - 4500) * (temp_calc - 4500))/8;
     }
 
     // Now bring it all together to apply offsets
 
 
-    OFF = ((int64_t)coefficient[2] << ConvCoef[0]) + (((coefficient[4] * (int64_t)dT)) >> ConvCoef[1]);
-    SENS = ((int64_t)coefficient[1] << ConvCoef[2]) + (((coefficient[3] * (int64_t)dT)) >> ConvCoef[3]);
+    OFF = ((int64_t)coefficient[2] << OffShift) + (((coefficient[4] * (int64_t)dT)) >> OffDtShift);
+    SENS = ((int64_t)coefficient[1] << SensShift) + (((coefficient[3] * (int64_t)dT)) >> SensDtShift);
 
     temp_calc = temp_calc - T2;
     OFF = OFF - OFF2;
     SENS = SENS - SENS2;
 
     // Now lets calculate the pressure
-    pressure_calc = (((SENS * pressure_raw) / 2097152 ) - OFF) / ((int64_t)1 << ConvCoef[16]);
+    pressure_calc = (((SENS * pressure_raw) / 2097152 ) - OFF) / ((int64_t)1 << PShift);
 
     _temperature_actual = temp_calc ;
     _pressure_actual = pressure_calc ; // 10;// pressure_calc;
