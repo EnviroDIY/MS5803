@@ -216,8 +216,8 @@ void MS5803::reset(void)
 }
 
 
-uint8_t MS5803::begin()
-// Initialize library for subsequent pressure measurements
+bool MS5803::begin()
+// Reset the part, read its PROM coefficients, and report whether it answered.
 {
     bus().begin();  // the bus initializer, whichever bus this is
 
@@ -239,11 +239,13 @@ uint8_t MS5803::begin()
     }
 
     bus().beginTransmission(_address);
-    return bus().endTransmission(); //Return sucess or failue of I2C connection
+    // endTransmission() answers 0 on success, so invert it: true means the part
+    // acknowledged, which is what every other NW library's begin() means.
+    return bus().endTransmission() == 0;
 }
 
 
-uint8_t MS5803::begin(uint8_t address, int MaxPressure)
+bool MS5803::begin(uint8_t address, int MaxPressure)
 // Initialize library for subsequent pressure measurements
 {
     // Reset address and pressure if given in begin

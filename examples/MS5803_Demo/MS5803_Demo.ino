@@ -50,7 +50,10 @@ void setup() {
     // available addresses (selected by jumper on board)
     //  ADDRESS_HIGH = 0x76
     //  ADDRESS_LOW  = 0x77
-    sensor.begin(0x76, 14);
+    if(!sensor.begin(0x76, 14))  //0x76 by the CSB pin; 14 is the bar figure of an MS5803-14BA
+    {
+        Serial.println("No MS5803 answered at 0x76");
+    }
 
     //Retrieve calibration constants for conversion math.
     sensor.reset();

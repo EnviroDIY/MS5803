@@ -79,8 +79,17 @@ public:
     // logger reaches its MS5803 over a software bus. The bus must outlive this.
     MS5803(MS5803_Bus& bus, uint8_t address = 0x77, int MaxPressure = MS5803_MODEL_UNDECLARED);
     void reset(void);     //Reset device
-    uint8_t begin(uint8_t address, int MaxPressure); // Collect coefficients from sensor
-    uint8_t begin(); // Collect coefficients from sensor
+    /**
+     * @brief Start the part: reset it, read its PROM coefficients, and declare
+     * which part it is.
+     * @param address 0x76 or 0x77, by the CSB pin.
+     * @param MaxPressure the bar figure in the order code: 1, 2, 5, 7, 14, 30.
+     * @return true when the part acknowledged on the bus.
+     */
+    bool begin(uint8_t address, int MaxPressure);
+
+    /// @brief Start the part at the address and model already given. @return true when it acknowledged.
+    bool begin();
 
     // Return calculated temperature from sensor
     float getTemperature(temperature_units units, precision _precision);

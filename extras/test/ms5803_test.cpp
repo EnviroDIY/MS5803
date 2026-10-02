@@ -117,7 +117,7 @@ static int run(const Case CASES[], size_t n, const char *heading) {
     Wire.d1 = c.D1; Wire.d2 = c.D2;
 
     MS5803 sensor(0x77, c.maxPressure);
-    if (sensor.begin() != 0) { printf("%-8s  begin() did not acknowledge\n", c.name); failures++; continue; }
+    if (!sensor.begin()) { printf("%-8s  begin() did not acknowledge\n", c.name); failures++; continue; }
 
     double p = sensor.getPressure(ADC_4096);
     double t = sensor.getTemperature(CELSIUS, ADC_4096);
@@ -139,7 +139,7 @@ static int unknownModelRefused() {
   Wire.d1 = c.D1; Wire.d2 = c.D2;
 
   MS5803 sensor(0x77, 99);   // 99 bar: no such part here
-  if (sensor.begin() != 0) {
+  if (!sensor.begin()) {
     printf("  begin() did not acknowledge\n");
     return 1;
   }
