@@ -129,12 +129,48 @@ static int run(const Case CASES[], size_t n, const char *heading) {
   return failures;
 }
 
+// A bar figure this library does not know must be refused, not given the 05BA's
+// constants: that used to return a confidently wrong pressure and raise nothing.
+static int unknownModelRefused() {
+  printf("\nA bar figure the library does not know:\n\n");
+  const Case &c = CASES[1];   // any worked example: its own bar figure is the control
+  for (int k = 0; k < 6; k++) Wire.prom[k + 1] = c.C[k];
+  Wire.prom[0] = 0; Wire.prom[7] = 0;
+  Wire.d1 = c.D1; Wire.d2 = c.D2;
+
+  MS5803 sensor(0x77, 99);   // 99 bar: no such part here
+  if (sensor.begin() != 0) {
+    printf("  begin() did not acknowledge\n");
+    return 1;
+  }
+  int failures = 0;
+  bool known = sensor.modelKnown();
+  double p = sensor.getPressure(ADC_4096);
+  double t = sensor.getTemperature(CELSIUS, ADC_4096);
+  printf("  modelKnown()   = %s   %s\n", known ? "true" : "false", known ? "FAIL" : "ok");
+  printf("  getPressure()  = %f   %s\n", p, std::isnan(p) ? "ok" : "FAIL");
+  printf("  getTemperature = %f   %s\n", t, std::isnan(t) ? "ok" : "FAIL");
+  if (known) failures++;
+  if (!std::isnan(p)) failures++;
+  if (!std::isnan(t)) failures++;
+  // The same readings through the part's own bar figure still convert, which
+  // shows the refusal is aimed at the unknown figure and not at everything.
+  MS5803 good(0x77, c.maxPressure);
+  good.begin();
+  double gp = good.getPressure(ADC_4096);
+  bool ok = fabs(gp - c.mbar) < 0.005;
+  printf("  %s still reads %.2f mbar (wanted %.2f)   %s\n", c.name, gp, c.mbar, ok ? "ok" : "FAIL");
+  if (!ok) failures++;
+  return failures;
+}
+
 int main() {
   int failures = 0;
   failures += run(CASES, sizeof(CASES) / sizeof(CASES[0]),
                   "Worked example from each datasheet:");
   failures += run(SPAN, sizeof(SPAN) / sizeof(SPAN[0]),
                   "Across temperature, against the flow charts:");
+  failures += unknownModelRefused();
   if (failures) { printf("\n%d case(s) missed the expected answer\n", failures); return 1; }
   printf("\nEvery case matches.\n");
   return 0;

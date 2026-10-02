@@ -75,7 +75,14 @@ public:
     // Return calculated pressure from sensor
     float getPressure(precision _precision);
 
+    // Whether the bar figure given to the constructor or to begin() names a
+    // part this library carries constants for. When it does not, getPressure()
+    // and getTemperature() return NAN rather than converting with another
+    // part's constants.
+    bool modelKnown() const { return _modelKnown; }
+
 private:
+    bool _modelKnown = false;   // set by setModel(); false for a bar figure it does not know
     int32_t _temperature_actual;
     int32_t _pressure_actual;
 

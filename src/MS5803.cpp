@@ -48,6 +48,7 @@ void MS5803::setModel(int MaxPressure)
 // raises no fault, so extras/test/compensation_check.py compares every one of
 // them with the datasheets. Run it after any edit.
 {
+    _modelKnown = true;   // cleared again by the default case below
     switch(MaxPressure)
     {
         case (1):   // MS5803-01BA
@@ -92,13 +93,17 @@ void MS5803::setModel(int MaxPressure)
             PShift = 15;
             break;
 
-        //FIX! A bar figure this library does not know takes the 05BA's
-        // constants, as it always has, which gives a confidently wrong pressure
-        // and raises nothing. The Walrus firmware answers this with a known-model
-        // flag and a notice; whether this library returns NAN instead is a
-        // separate decision, kept out of this change so that the change itself
-        // is provably behaviour-preserving.
-        default:    // and any bar figure this library does not know, as before
+        // A bar figure this library does not know is refused rather than
+        // silently given the 05BA's constants, which is what it used to do:
+        // that returned a confidently wrong pressure and raised nothing
+        // (Andy, 2026-10-02, "MS5803 should have no silent default"). The
+        // constants are left untouched here, and getPressure() and
+        // getTemperature() return NAN without running the compensation, which
+        // would otherwise shift by indeterminate amounts.
+        default:
+            _modelKnown = false;
+            break;
+
         case (5):   // MS5803-05BA
             OffShift = 18;
             OffDtShift = 5;
@@ -233,8 +238,10 @@ uint8_t MS5803::begin(uint8_t address, int MaxPressure)
 
 
 float MS5803::getTemperature(temperature_units units, precision _precision)
-// Return a temperature reading in either F or C.
+// Return a temperature reading in either F or C, or NAN for a part whose bar
+// figure this library does not know: see setModel().
 {
+    if(!_modelKnown) return NAN;
     getMeasurements(_precision);
     float temperature_reported;
     // If Fahrenheit is selected return the temperature converted to F
@@ -253,8 +260,10 @@ float MS5803::getTemperature(temperature_units units, precision _precision)
 
 
 float MS5803::getPressure(precision _precision)
-// Return a pressure reading units Pa.
+// Return a pressure reading units Pa, or NAN for a part whose bar figure this
+// library does not know: see setModel().
 {
+    if(!_modelKnown) return NAN;
     getMeasurements(_precision);
     float pressure_reported;
     pressure_reported = _pressure_actual;
