@@ -20,6 +20,7 @@ Distributed as-is; no warranty is given.
 #define MS5803_h
 
 #include <Arduino.h>
+#include "MS5803_Bus.h"
 
 // Define units for conversions.
 enum temperature_units
@@ -65,7 +66,10 @@ enum precision
 class MS5803
 {
 public:
-    MS5803(uint8_t address = 0x77, int MaxPressure = 2);  // Constructor
+    MS5803(uint8_t address = 0x77, int MaxPressure = 2);  // Constructor, hardware TwoWire
+    // The same part on another bus: a board whose hardware TWI answers its own
+    // logger reaches its MS5803 over a software bus. The bus must outlive this.
+    MS5803(MS5803_Bus& bus, uint8_t address = 0x77, int MaxPressure = 2);
     void reset(void);     //Reset device
     uint8_t begin(uint8_t address, int MaxPressure); // Collect coefficients from sensor
     uint8_t begin(); // Collect coefficients from sensor
@@ -89,6 +93,7 @@ public:
     uint32_t getTemperatureADC() const { return _temperature_adc; }
 
 private:
+    MS5803_Bus* _bus;           // the bus this part is read over; never null
     bool _modelKnown = false;   // set by setModel(); false for a bar figure it does not know
     uint32_t _pressure_adc = 0;      // D1, the last raw pressure conversion
     uint32_t _temperature_adc = 0;   // D2, the last raw temperature conversion

@@ -34,11 +34,22 @@ Distributed as-is; no warranty is given.
 // is the CRC alone.
 
 
+MS5803_WireBus MS5803_wire;   // the default bus, declared in MS5803_Bus.h
+
 MS5803::MS5803(uint8_t address, int MaxPressure)
 // Base library type I2C
 {
     _address = address; //set interface used for communication
 
+    _bus = &MS5803_wire;
+    setModel(MaxPressure);
+}
+
+MS5803::MS5803(MS5803_Bus& bus, uint8_t address, int MaxPressure)
+// The same part, read over a bus the caller supplies.
+{
+    _address = address;
+    _bus = &bus;
     setModel(MaxPressure);
 }
 
@@ -201,7 +212,7 @@ void MS5803::reset(void)
 uint8_t MS5803::begin()
 // Initialize library for subsequent pressure measurements
 {
-    Wire.begin();  // Arduino Wire library initializer
+    _bus->begin();  // the bus initializer, whichever bus this is
 
     uint8_t i;
     uint8_t highByte = 0;
@@ -209,9 +220,9 @@ uint8_t MS5803::begin()
 
     for(i = 0; i <= 7; i++){
         sendCommand(CMD_PROM + (i * 2));
-        Wire.requestFrom((int)_address, 2);
-        highByte = Wire.read();
-        lowByte = Wire.read();
+        _bus->requestFrom(_address, 2);
+        highByte = _bus->read();
+        lowByte = _bus->read();
         coefficient[i] = (highByte << 8)|lowByte;
     // Uncomment below for debugging output.
        // Serial.print("C");
@@ -220,8 +231,8 @@ uint8_t MS5803::begin()
        // Serial.println(coefficient[i]);
     }
 
-    Wire.beginTransmission((int)_address);
-    return Wire.endTransmission(); //Return sucess or failue of I2C connection
+    _bus->beginTransmission(_address);
+    return _bus->endTransmission(); //Return sucess or failue of I2C connection
 }
 
 
@@ -387,13 +398,13 @@ uint32_t MS5803::getADCconversion(measurement _measurement, precision _precision
     }
 
     sendCommand(CMD_ADC_READ);
-    Wire.requestFrom((int)_address, 3);
+    _bus->requestFrom(_address, 3);
 
-    while(Wire.available())
+    while(_bus->available())
     {
-        highByte = Wire.read();
-        midByte = Wire.read();
-        lowByte = Wire.read();
+        highByte = _bus->read();
+        midByte = _bus->read();
+        lowByte = _bus->read();
     }
 
     result = ((uint32_t)highByte << 16) + ((uint32_t)midByte << 8) + lowByte;
@@ -404,9 +415,9 @@ uint32_t MS5803::getADCconversion(measurement _measurement, precision _precision
 
 void MS5803::sendCommand(uint8_t command)
 {
-    Wire.beginTransmission(_address);
-    Wire.write(command);
-    Wire.endTransmission();
+    _bus->beginTransmission(_address);
+    _bus->write(command);
+    _bus->endTransmission();
 }
 
 
