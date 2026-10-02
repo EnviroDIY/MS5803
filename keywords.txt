@@ -1,0 +1,57 @@
+#######################################
+# Syntax Coloring Map for MS5803
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+MS5803	KEYWORD1
+MS5803_Compensation	KEYWORD1
+MS5803_Bus	KEYWORD1
+MS5803_WireBus	KEYWORD1
+temperature_units	KEYWORD1
+measurement	KEYWORD1
+precision	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+reset	KEYWORD2
+getPressure	KEYWORD2
+getTemperature	KEYWORD2
+getPressureADC	KEYWORD2
+getTemperatureADC	KEYWORD2
+modelKnown	KEYWORD2
+setModel	KEYWORD2
+setCoefficients	KEYWORD2
+compensate	KEYWORD2
+pressureActual	KEYWORD2
+temperatureActual	KEYWORD2
+mbarDivisor	KEYWORD2
+pressureADC	KEYWORD2
+temperatureADC	KEYWORD2
+compensation	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+MS5803_MODEL_UNDECLARED	LITERAL1
+ADDRESS_LOW	LITERAL1
+ADDRESS_HIGH	LITERAL1
+CMD_RESET	LITERAL1
+CMD_ADC_READ	LITERAL1
+CMD_ADC_CONV	LITERAL1
+CMD_PROM	LITERAL1
+PRESSURE	LITERAL1
+TEMPERATURE	LITERAL1
+CELSIUS	LITERAL1
+FAHRENHEIT	LITERAL1
+ADC_256	LITERAL1
+ADC_512	LITERAL1
+ADC_1024	LITERAL1
+ADC_2048	LITERAL1
+ADC_4096	LITERAL1
