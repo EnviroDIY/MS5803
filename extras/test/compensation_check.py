@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the library and the firmware against the six MS5803 datasheets.
+"""Check the library's compensation against the six MS5803 datasheets.
 
 Both name eighteen constants and set them with a switch, one case per variant,
 and every one is an exponent or a multiplier taken from that variant's
@@ -11,8 +11,8 @@ raises no fault, so both copies are checked here rather than trusted.
 
 Three things run:
 
-1. Every case of MS5803::setModel() in src/MS5803.cpp and of setMS5803Model()
-   in the Walrus firmware is compared with the reference below, constant by
+1. Every case of MS5803::setModel() in src/MS5803.cpp is compared with the
+   reference below, constant by
    constant, and a case that omits a constant is reported as well.
 
 2. Each variant's worked example is reproduced. Every datasheet prints one set
@@ -46,7 +46,8 @@ import sys
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[2] / "src" / "MS5803.cpp"
-# The Walrus firmware carries the same constants, because a sensor compensates
+# The Walrus firmware no longer carries its own copy; this path is kept so the
+# check can refuse one if it ever returns. Formerly it carried the same constants
 # its own reading. Checked here too: one reference, both copies. Its path is
 # given relative to the workspace these repositories sit in side by side.
 FIRMWARE = Path(__file__).resolve().parents[3] / "Project-Walrus" / "Firmware" / "Walrus_I2C_5BA" / "Walrus_I2C_5BA.ino"
@@ -206,8 +207,16 @@ def main(argv):
     print(f"MS5803::setModel() in {SOURCE.name}, against the datasheets:\n")
     failures += check_constants(SOURCE, r"void\s+MS5803::setModel\([^)]*\)")
 
-    print(f"\nsetMS5803Model() in {FIRMWARE.name}, against the same datasheets:\n")
-    failures += check_constants(FIRMWARE, r"void\s+setMS5803Model\([^)]*\)")
+    # The Walrus firmware used to carry a second copy of this table and of the
+    # arithmetic, and this check held the two in agreement. It compensates
+    # through the library now (Project-Walrus 3288a01), so there is one copy to
+    # check. Guard against the copy coming back: a second table is a
+    # regression, not something to check twice.
+    if FIRMWARE.exists() and re.search(r"void\s+setMS5803Model\s*\(", FIRMWARE.read_text()):
+        print(f"\nFAIL: {FIRMWARE.name} has its own setMS5803Model() again.")
+        print("The firmware compensates through the library; a second constant")
+        print("table is a regression. See Project-Walrus 3288a01.")
+        failures += 1
 
     print("\nWorked example from each datasheet:\n")
     print(f"{'variant':>8} {'P wanted':>10} {'P got':>10} {'T wanted':>10} {'T got':>8}  verdict")
@@ -220,7 +229,8 @@ def main(argv):
     if failures:
         print(f"\n{failures} check(s) failed", file=sys.stderr)
         return 1
-    print("\nBoth copies match the datasheets, and every variant reproduces its worked example.")
+    print("\nThe library matches the datasheets, every variant reproduces its worked")
+    print("example, and the firmware carries no second copy.")
     return 0
 
 
