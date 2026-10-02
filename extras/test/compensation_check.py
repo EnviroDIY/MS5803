@@ -11,8 +11,8 @@ raises no fault, so both copies are checked here rather than trusted.
 
 Three things run:
 
-1. Every case of MS5803::setModel() in src/MS5803.cpp is compared with the
-   reference below, constant by
+1. Every case of MS5803_Compensation::setModel() in
+   src/MS5803_Compensation.cpp is compared with the reference below, constant by
    constant, and a case that omits a constant is reported as well.
 
 2. Each variant's worked example is reproduced. Every datasheet prints one set
@@ -45,7 +45,7 @@ import re
 import sys
 from pathlib import Path
 
-SOURCE = Path(__file__).resolve().parents[2] / "src" / "MS5803.cpp"
+SOURCE = Path(__file__).resolve().parents[2] / "src" / "MS5803_Compensation.cpp"
 # The Walrus firmware no longer carries its own copy; this path is kept so the
 # check can refuse one if it ever returns. Formerly it carried the same constants
 # its own reading. Checked here too: one reference, both copies. Its path is
@@ -204,8 +204,8 @@ def main(argv):
         return 0
 
     failures = 0
-    print(f"MS5803::setModel() in {SOURCE.name}, against the datasheets:\n")
-    failures += check_constants(SOURCE, r"void\s+MS5803::setModel\([^)]*\)")
+    print(f"MS5803_Compensation::setModel() in {SOURCE.name}, against the datasheets:\n")
+    failures += check_constants(SOURCE, r"void\s+MS5803_Compensation::setModel\([^)]*\)")
 
     # The Walrus firmware used to carry a second copy of this table and of the
     # arithmetic, and this check held the two in agreement. It compensates
