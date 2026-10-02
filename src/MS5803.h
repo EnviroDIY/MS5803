@@ -95,6 +95,10 @@ public:
     // temperatureActual().
     void compensate(uint32_t D1, uint32_t D2);
 
+    // The part's eight PROM words, for a board that read them over its own
+    // bus. begin() does this itself when the library owns the bus.
+    void setCoefficients(const uint16_t* c);
+
     // The compensated values as the datasheet's integers, which is what a
     // device serving Schema 1 registers needs: pressure in the part's own
     // units before the mbar divisor, temperature in hundredths of a degree.

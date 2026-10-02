@@ -299,6 +299,12 @@ void MS5803::getMeasurements(precision _precision)
     compensate((uint32_t)pressure_raw, (uint32_t)temperature_raw);
 }
 
+void MS5803::setCoefficients(const uint16_t* c)
+// The PROM words a board read for itself, in the datasheet's order.
+{
+    for(uint8_t i = 0; i < 8; i++) coefficient[i] = c[i];
+}
+
 void MS5803::compensate(uint32_t D1, uint32_t D2)
 // The datasheet's compensation, over conversions the caller already has. A
 // board that reads the part itself calls this rather than carrying a second
