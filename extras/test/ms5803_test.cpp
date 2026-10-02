@@ -173,6 +173,30 @@ static int unknownModelRefused() {
   return failures;
 }
 
+// Constructing without naming a part must not assume one either: the default
+// used to be the 02BA, which is the same silent guess one level up.
+static int undeclaredModelRefused() {
+  printf("\nA part nobody declared:\n\n");
+  const Case &c = CASES[1];
+  for (int k = 0; k < 6; k++) Wire.prom[k + 1] = c.C[k];
+  Wire.prom[0] = 0; Wire.prom[7] = 0;
+  Wire.d1 = c.D1; Wire.d2 = c.D2;
+
+  MS5803 sensor;              // no bar figure given
+  sensor.begin();
+  int failures = 0;
+  bool known = sensor.modelKnown();
+  double p = sensor.getPressure(ADC_4096);
+  printf("  modelKnown()        = %-5s   %s\n", known ? "true" : "false", known ? "FAIL" : "ok");
+  printf("  getPressure()       = %-10f   %s\n", p, std::isnan(p) ? "ok" : "FAIL");
+  printf("  getPressureADC()    = %-10lu   %s\n", (unsigned long)sensor.getPressureADC(),
+         sensor.getPressureADC() == c.D1 ? "ok" : "FAIL");
+  if (known) failures++;
+  if (!std::isnan(p)) failures++;
+  if (sensor.getPressureADC() != c.D1) failures++;
+  return failures;
+}
+
 int main() {
   int failures = 0;
   failures += run(CASES, sizeof(CASES) / sizeof(CASES[0]),
@@ -180,6 +204,7 @@ int main() {
   failures += run(SPAN, sizeof(SPAN) / sizeof(SPAN[0]),
                   "Across temperature, against the flow charts:");
   failures += unknownModelRefused();
+  failures += undeclaredModelRefused();
   if (failures) { printf("\n%d case(s) missed the expected answer\n", failures); return 1; }
   printf("\nEvery case matches.\n");
   return 0;

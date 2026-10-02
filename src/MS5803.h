@@ -60,16 +60,24 @@ enum precision
 
 #define CMD_PROM 0xA0 // Coefficient location
 
+// The bar figure in a part's order code, which is what selects its
+// compensation constants: MS5803-01BA, -02BA, -05BA, -07BA, -14BA, -30BA.
+// A part is not assumed. Until one is declared, the library compensates
+// nothing and says so through modelKnown(), because the alternative is
+// converting with another part's constants and returning a confidently wrong
+// pressure (Andy, 2026-10-02).
+#define MS5803_MODEL_UNDECLARED 0
+
 #define ADDRESS_LOW 0x77
 #define ADDRESS_HIGH 0x76
 
 class MS5803
 {
 public:
-    MS5803(uint8_t address = 0x77, int MaxPressure = 2);  // Constructor, hardware TwoWire
+    MS5803(uint8_t address = 0x77, int MaxPressure = MS5803_MODEL_UNDECLARED);  // hardware TwoWire
     // The same part on another bus: a board whose hardware TWI answers its own
     // logger reaches its MS5803 over a software bus. The bus must outlive this.
-    MS5803(MS5803_Bus& bus, uint8_t address = 0x77, int MaxPressure = 2);
+    MS5803(MS5803_Bus& bus, uint8_t address = 0x77, int MaxPressure = MS5803_MODEL_UNDECLARED);
     void reset(void);     //Reset device
     uint8_t begin(uint8_t address, int MaxPressure); // Collect coefficients from sensor
     uint8_t begin(); // Collect coefficients from sensor
