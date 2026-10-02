@@ -24,7 +24,10 @@
 class MS5803_Bus
 {
 public:
-    virtual ~MS5803_Bus() {}
+    // No virtual destructor on purpose. A bus is a static object held for the
+    // program's life and is never deleted through this pointer, and declaring
+    // one pulls operator delete, and with it malloc and free, into the link:
+    // 586 bytes of an ATtiny1634's flash for a destructor nobody calls.
     virtual void begin() = 0;
     virtual void beginTransmission(uint8_t address) = 0;
     virtual size_t write(uint8_t data) = 0;

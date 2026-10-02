@@ -118,7 +118,11 @@ public:
     uint32_t getTemperatureADC() const { return _temperature_adc; }
 
 private:
-    MS5803_Bus* _bus;           // the bus this part is read over; never null
+    MS5803_Bus* _bus;           // the bus this part is read over, or null for the default
+    // Resolved here rather than in the constructor so that a board which only
+    // compensates - it reads the part over its own bus - never references
+    // MS5803_wire, and the link drops the hardware-bus adapter with it.
+    MS5803_Bus& bus();
     bool _modelKnown = false;   // set by setModel(); false for a bar figure it does not know
     uint32_t _pressure_adc = 0;      // D1, the last raw pressure conversion
     uint32_t _temperature_adc = 0;   // D2, the last raw temperature conversion
