@@ -291,19 +291,30 @@ float MS5803::getPressure(precision _precision)
 
 
 void MS5803::getMeasurements(precision _precision)
-// Gets resuts from ADC and stores them into internal variables
+// Read the two conversions off the part, then compensate them.
 {
     //Retrieve ADC result
     int32_t temperature_raw = getADCconversion(TEMPERATURE, _precision);
     int32_t pressure_raw = getADCconversion(PRESSURE, _precision);
-    _temperature_adc = temperature_raw;
-    _pressure_adc = pressure_raw;
+    compensate((uint32_t)pressure_raw, (uint32_t)temperature_raw);
+}
+
+void MS5803::compensate(uint32_t D1, uint32_t D2)
+// The datasheet's compensation, over conversions the caller already has. A
+// board that reads the part itself calls this rather than carrying a second
+// copy of the arithmetic: the Walrus firmware reaches its MS5803 over a
+// software bus, and used to duplicate every constant and every line below.
+{
+    int32_t temperature_raw = (int32_t)D2;
+    int32_t pressure_raw = (int32_t)D1;
+    _temperature_adc = D2;
+    _pressure_adc = D1;
 
     // A part whose bar figure this library does not know stops here: the raw
-    // conversions stand, and getPressure() and getTemperature() hand those back
-    // instead. Compensating would mean shifting by another part's amounts, which
-    // is how this used to return a confidently wrong pressure. The Walrus device
-    // does the same thing with no model on Page 1, and its header names the
+    // conversions stand, and getPressureADC() and getTemperatureADC() hand
+    // those back. Compensating would mean shifting by another part's amounts,
+    // which is how this used to return a confidently wrong pressure. The Walrus
+    // device does the same with no model on Page 1, and its library names the
     // columns D1 and D2 when it does.
     if(!_modelKnown) return;
 

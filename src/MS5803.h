@@ -87,6 +87,23 @@ public:
     // before naming a column, as the Walrus library does.
     bool modelKnown() const { return _modelKnown; }
 
+    // The datasheet's compensation over conversions the caller already read,
+    // for a board that reaches the part over its own bus: the Walrus firmware
+    // does, and carried a second copy of the constants and the arithmetic for
+    // that reason. Call setModel() first; the results are then available
+    // through getPressure(), getTemperature(), pressureActual() and
+    // temperatureActual().
+    void compensate(uint32_t D1, uint32_t D2);
+
+    // The compensated values as the datasheet's integers, which is what a
+    // device serving Schema 1 registers needs: pressure in the part's own
+    // units before the mbar divisor, temperature in hundredths of a degree.
+    int32_t pressureActual() const { return _pressure_actual; }
+    int32_t temperatureActual() const { return _temperature_actual; }
+
+    // The divisor taking pressureActual() to mbar, from the fitted part.
+    uint8_t mbarDivisor() const { return MbarDivisor; }
+
     // The last raw conversions, whatever the model: D1 is pressure, D2 is
     // temperature, both 24-bit.
     uint32_t getPressureADC() const { return _pressure_adc; }
@@ -127,7 +144,7 @@ private:
     uint8_t Sens2MultVeryHot;   // above 45 C, the 01BA alone
     uint8_t PShift;             // P = (D1 * SENS / 2^21 - OFF) / 2^PShift
 
-    void getMeasurements(precision _precision);
+    void getMeasurements(precision _precision);   // read the part, then compensate
 
     void setModel(int MaxPressure);   // the constants for a part's bar figure
     void sendCommand(uint8_t command);    // General I2C send command function
