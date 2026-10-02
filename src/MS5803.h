@@ -77,12 +77,21 @@ public:
 
     // Whether the bar figure given to the constructor or to begin() names a
     // part this library carries constants for. When it does not, getPressure()
-    // and getTemperature() return NAN rather than converting with another
-    // part's constants.
+    // and getTemperature() hand back the raw D1 and D2 conversions rather than
+    // converting with another part's constants: the reading is kept and can be
+    // compensated afterwards, and the units are no longer mbar and C. Ask this
+    // before naming a column, as the Walrus library does.
     bool modelKnown() const { return _modelKnown; }
+
+    // The last raw conversions, whatever the model: D1 is pressure, D2 is
+    // temperature, both 24-bit.
+    uint32_t getPressureADC() const { return _pressure_adc; }
+    uint32_t getTemperatureADC() const { return _temperature_adc; }
 
 private:
     bool _modelKnown = false;   // set by setModel(); false for a bar figure it does not know
+    uint32_t _pressure_adc = 0;      // D1, the last raw pressure conversion
+    uint32_t _temperature_adc = 0;   // D2, the last raw temperature conversion
     int32_t _temperature_actual;
     int32_t _pressure_actual;
 

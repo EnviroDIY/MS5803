@@ -147,12 +147,16 @@ static int unknownModelRefused() {
   bool known = sensor.modelKnown();
   double p = sensor.getPressure(ADC_4096);
   double t = sensor.getTemperature(CELSIUS, ADC_4096);
-  printf("  modelKnown()   = %s   %s\n", known ? "true" : "false", known ? "FAIL" : "ok");
-  printf("  getPressure()  = %f   %s\n", p, std::isnan(p) ? "ok" : "FAIL");
-  printf("  getTemperature = %f   %s\n", t, std::isnan(t) ? "ok" : "FAIL");
+  // The raw conversions stand, so the reading is kept rather than discarded:
+  // what comes back is D1 and D2, not mbar and C.
+  bool pRaw = (p == (double)c.D1);
+  bool tRaw = (t == (double)c.D2);
+  printf("  modelKnown()   = %-5s        %s\n", known ? "true" : "false", known ? "FAIL" : "ok");
+  printf("  getPressure()  = %-12.0f (D1 = %lu)   %s\n", p, (unsigned long)c.D1, pRaw ? "ok" : "FAIL");
+  printf("  getTemperature = %-12.0f (D2 = %lu)   %s\n", t, (unsigned long)c.D2, tRaw ? "ok" : "FAIL");
   if (known) failures++;
-  if (!std::isnan(p)) failures++;
-  if (!std::isnan(t)) failures++;
+  if (!pRaw) failures++;
+  if (!tRaw) failures++;
   // The same readings through the part's own bar figure still convert, which
   // shows the refusal is aimed at the unknown figure and not at everything.
   MS5803 good(0x77, c.maxPressure);

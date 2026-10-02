@@ -93,13 +93,13 @@ void MS5803::setModel(int MaxPressure)
             PShift = 15;
             break;
 
-        // A bar figure this library does not know is refused rather than
-        // silently given the 05BA's constants, which is what it used to do:
-        // that returned a confidently wrong pressure and raised nothing
-        // (Andy, 2026-10-02, "MS5803 should have no silent default"). The
-        // constants are left untouched here, and getPressure() and
-        // getTemperature() return NAN without running the compensation, which
-        // would otherwise shift by indeterminate amounts.
+        // A bar figure this library does not know no longer takes the 05BA's
+        // constants, which is what it used to do: that returned a confidently
+        // wrong pressure and raised nothing (Andy, 2026-10-02, "MS5803 should
+        // have no silent default"). The constants are left untouched here, and
+        // the reading stops after the raw conversions, which getPressure() and
+        // getTemperature() hand back instead. Nothing is thrown away, and a
+        // caller can compensate afterwards once the part is identified.
         default:
             _modelKnown = false;
             break;
@@ -238,11 +238,13 @@ uint8_t MS5803::begin(uint8_t address, int MaxPressure)
 
 
 float MS5803::getTemperature(temperature_units units, precision _precision)
-// Return a temperature reading in either F or C, or NAN for a part whose bar
-// figure this library does not know: see setModel().
+// Return a temperature reading in either F or C. For a part whose bar figure
+// this library does not know, return the raw D2 conversion instead and leave it
+// to the caller to say so: ask modelKnown(), and name the column D2 rather than
+// a temperature. See setModel().
 {
-    if(!_modelKnown) return NAN;
     getMeasurements(_precision);
+    if(!_modelKnown) return (float)_temperature_adc;
     float temperature_reported;
     // If Fahrenheit is selected return the temperature converted to F
     if(units == FAHRENHEIT){
@@ -260,11 +262,13 @@ float MS5803::getTemperature(temperature_units units, precision _precision)
 
 
 float MS5803::getPressure(precision _precision)
-// Return a pressure reading units Pa, or NAN for a part whose bar figure this
-// library does not know: see setModel().
+// Return a pressure reading units Pa. For a part whose bar figure this library
+// does not know, return the raw D1 conversion instead and leave it to the caller
+// to say so: ask modelKnown(), and name the column D1 rather than a pressure.
+// See setModel().
 {
-    if(!_modelKnown) return NAN;
     getMeasurements(_precision);
+    if(!_modelKnown) return (float)_pressure_adc;
     float pressure_reported;
     pressure_reported = _pressure_actual;
     // Divided as a double, which is what float(ConvCoef[4])/100.0 was before
@@ -281,6 +285,16 @@ void MS5803::getMeasurements(precision _precision)
     //Retrieve ADC result
     int32_t temperature_raw = getADCconversion(TEMPERATURE, _precision);
     int32_t pressure_raw = getADCconversion(PRESSURE, _precision);
+    _temperature_adc = temperature_raw;
+    _pressure_adc = pressure_raw;
+
+    // A part whose bar figure this library does not know stops here: the raw
+    // conversions stand, and getPressure() and getTemperature() hand those back
+    // instead. Compensating would mean shifting by another part's amounts, which
+    // is how this used to return a confidently wrong pressure. The Walrus device
+    // does the same thing with no model on Page 1, and its header names the
+    // columns D1 and D2 when it does.
+    if(!_modelKnown) return;
 
     //Create Variables for calculations
     int32_t temp_calc;
