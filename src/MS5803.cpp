@@ -238,13 +238,13 @@ uint8_t MS5803::begin(uint8_t address, int MaxPressure)
 
 
 float MS5803::getTemperature(temperature_units units, precision _precision)
-// Return a temperature reading in either F or C. For a part whose bar figure
-// this library does not know, return the raw D2 conversion instead and leave it
-// to the caller to say so: ask modelKnown(), and name the column D2 rather than
-// a temperature. See setModel().
+// Return a temperature reading in either F or C, or NAN for a part whose bar
+// figure this library does not know. A caller wanting the reading anyway takes
+// getTemperatureADC(), which is what the Walrus does: ask modelKnown(), then
+// name the column D2 rather than a temperature.
 {
     getMeasurements(_precision);
-    if(!_modelKnown) return (float)_temperature_adc;
+    if(!_modelKnown) return NAN;
     float temperature_reported;
     // If Fahrenheit is selected return the temperature converted to F
     if(units == FAHRENHEIT){
@@ -262,13 +262,13 @@ float MS5803::getTemperature(temperature_units units, precision _precision)
 
 
 float MS5803::getPressure(precision _precision)
-// Return a pressure reading units Pa. For a part whose bar figure this library
-// does not know, return the raw D1 conversion instead and leave it to the caller
-// to say so: ask modelKnown(), and name the column D1 rather than a pressure.
-// See setModel().
+// Return a pressure reading units Pa, or NAN for a part whose bar figure this
+// library does not know. A caller wanting the reading anyway takes
+// getPressureADC(), which is what the Walrus does: ask modelKnown(), then name
+// the column D1 rather than a pressure.
 {
     getMeasurements(_precision);
-    if(!_modelKnown) return (float)_pressure_adc;
+    if(!_modelKnown) return NAN;
     float pressure_reported;
     pressure_reported = _pressure_actual;
     // Divided as a double, which is what float(ConvCoef[4])/100.0 was before

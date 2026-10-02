@@ -147,14 +147,19 @@ static int unknownModelRefused() {
   bool known = sensor.modelKnown();
   double p = sensor.getPressure(ADC_4096);
   double t = sensor.getTemperature(CELSIUS, ADC_4096);
-  // The raw conversions stand, so the reading is kept rather than discarded:
-  // what comes back is D1 and D2, not mbar and C.
-  bool pRaw = (p == (double)c.D1);
-  bool tRaw = (t == (double)c.D2);
-  printf("  modelKnown()   = %-5s        %s\n", known ? "true" : "false", known ? "FAIL" : "ok");
-  printf("  getPressure()  = %-12.0f (D1 = %lu)   %s\n", p, (unsigned long)c.D1, pRaw ? "ok" : "FAIL");
-  printf("  getTemperature = %-12.0f (D2 = %lu)   %s\n", t, (unsigned long)c.D2, tRaw ? "ok" : "FAIL");
+  // Each getter keeps one meaning: a pressure, or nothing. The reading is not
+  // lost, because the raw conversions have their own accessors, which is how
+  // the Walrus reaches them.
+  bool pRaw = (sensor.getPressureADC() == c.D1);
+  bool tRaw = (sensor.getTemperatureADC() == c.D2);
+  printf("  modelKnown()        = %-5s   %s\n", known ? "true" : "false", known ? "FAIL" : "ok");
+  printf("  getPressure()       = %-10f   %s\n", p, std::isnan(p) ? "ok" : "FAIL");
+  printf("  getTemperature()    = %-10f   %s\n", t, std::isnan(t) ? "ok" : "FAIL");
+  printf("  getPressureADC()    = %-10lu   %s\n", (unsigned long)sensor.getPressureADC(), pRaw ? "ok" : "FAIL");
+  printf("  getTemperatureADC() = %-10lu   %s\n", (unsigned long)sensor.getTemperatureADC(), tRaw ? "ok" : "FAIL");
   if (known) failures++;
+  if (!std::isnan(p)) failures++;
+  if (!std::isnan(t)) failures++;
   if (!pRaw) failures++;
   if (!tRaw) failures++;
   // The same readings through the part's own bar figure still convert, which
