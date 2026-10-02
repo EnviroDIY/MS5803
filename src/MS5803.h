@@ -93,6 +93,10 @@ public:
     // that reason. Call setModel() first; the results are then available
     // through getPressure(), getTemperature(), pressureActual() and
     // temperatureActual().
+    // The constants for a part's bar figure. begin() calls this; a board that
+    // compensates for itself calls it directly, before setCoefficients().
+    void setModel(int MaxPressure);
+
     void compensate(uint32_t D1, uint32_t D2);
 
     // The part's eight PROM words, for a board that read them over its own
@@ -150,7 +154,6 @@ private:
 
     void getMeasurements(precision _precision);   // read the part, then compensate
 
-    void setModel(int MaxPressure);   // the constants for a part's bar figure
     void sendCommand(uint8_t command);    // General I2C send command function
     uint32_t getADCconversion(measurement _measurement, precision _precision);    // Retrieve ADC result
 
