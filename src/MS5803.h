@@ -244,15 +244,6 @@ public:
     /// @brief The last raw conversion of temperature, D2, whatever the model.
     uint32_t getTemperatureADC() const { return _comp.temperatureADC(); }
 
-    /**
-     * @brief The part's constants and the datasheet's arithmetic, on their own.
-     * @details A board that reads the part over its own bus holds an
-     * MS5803_Compensation directly and never needs this class. This accessor is
-     * for a caller that has both and wants the integers: Schema 1 registers
-     * carry pressure in microbar and temperature in hundredths of a degree, and
-     * taking the float back to an integer would round a second time.
-     */
-    const MS5803_Compensation& compensation() const { return _comp; }
 
 private:
     MS5803_Compensation _comp;  // the part's constants and the datasheet's arithmetic
