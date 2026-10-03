@@ -2,12 +2,15 @@
 
 Arduino library for the MS5803 series of media-isolated pressure transducers (Measurement Specialties, now TE). One library covers every variant: 01BA, 02BA, 05BA, 07BA, 14BA, and 30BA.
 
-Three headers, each one thing, split on 2026-10-02 because the Walrus firmware needs the second alone:
-- `MS5803.h` is the part on a bus: `reset()`, `begin()` reading the PROM, `getMeasurements()`, and the float getters.
-- `MS5803_Compensation.h` is the constant table and the datasheet's arithmetic, with no bus in it. A board that reads the part itself holds one of these and nothing else.
-- `MS5803_Protocol.h` is the addresses, commands and conversion options, which both halves want and neither owns.
+Four types in one header, the split made on 2026-10-02 because the Walrus firmware needs the second alone:
+- `MS5803` is the part on a bus: `reset()`, `begin()` reading the PROM, `getMeasurements()`, and the float getters.
+- `MS5803_Compensation` is the constant table and the datasheet's arithmetic, with no bus in it. A board that reads the part itself holds one of these and nothing else.
+- `MS5803_Bus` and `MS5803_WireBus` are the seven bus calls and the hardware bus that answers them.
+- The addresses, commands and conversion options sit above all of them, because both halves want them and neither owns them.
 
 `MS5803` holds an `MS5803_Compensation` and delegates to it. The constants are members rather than file-scope globals, and that is load-bearing: see the two-objects-on-one-bus note below.
+
+These were four separate headers for a day, which Andy questioned on 2026-10-03 as uncommon for an Arduino library. He was right, and the measurement settled it: the firmware compiles to the same 8740 bytes whether it includes the one header or only the two it used, because `--gc-sections` works on symbols rather than headers. The **type** split is what saved 1166 bytes, by letting the firmware instantiate no `MS5803` and so link no bus. The file split saved nothing, and one header is what an Arduino caller expects. Two `.cpp` files remain, which is unremarkable, and `compensation_check.py` reads the switch in `MS5803_Compensation.cpp`.
 
 ## Standards
 

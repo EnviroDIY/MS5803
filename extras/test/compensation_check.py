@@ -107,10 +107,10 @@ def compensate(C, cc, D1, D2, model=0):
 
 # The names both switches assign, in the order the reference rows use, and the
 # bar figure in each variant's order code, which is what they switch on.
-CONSTANTS = ["OffShift", "OffDtShift", "SensShift", "SensDtShift", "MbarDivisor",
-             "T2MultCold", "T2ShiftCold", "Off2MultCold", "Off2ShiftCold",
-             "Sens2MultCold", "Sens2ShiftCold", "Off2MultVeryCold", "Sens2MultVeryCold",
-             "T2MultHot", "T2ShiftHot", "Off2MultHot", "PShift", "Sens2MultVeryHot"]
+CONSTANTS = ["_offShift", "_offDtShift", "_sensShift", "_sensDtShift", "_mbarDivisor",
+             "_t2MultCold", "_t2ShiftCold", "_off2MultCold", "_off2ShiftCold",
+             "_sens2MultCold", "_sens2ShiftCold", "_off2MultVeryCold", "_sens2MultVeryCold",
+             "_t2MultHot", "_t2ShiftHot", "_off2MultHot", "_pShift", "_sens2MultVeryHot"]
 BAR = {"01BA": 1, "02BA": 2, "05BA": 5, "07BA": 7, "14BA": 14, "30BA": 30}
 
 
@@ -123,7 +123,7 @@ def check_constants(path, signature):
     assignments written out six times is eighteen chances to leave one out, and
     an omission would silently inherit whatever the last case set.
 
-    MbarDivisor is the plain divisor in the source (100, or 10 on the 14BA and
+    _mbarDivisor is the plain divisor in the source (100, or 10 on the 14BA and
     30BA) where the reference rows carry 100 times it, so it is scaled here.
     """
     if not path.exists():

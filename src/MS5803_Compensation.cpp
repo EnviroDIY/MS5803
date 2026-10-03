@@ -2,7 +2,7 @@
  * @file MS5803_Compensation.cpp
  * @brief See MS5803_Compensation.h.
  */
-#include "MS5803_Compensation.h"
+#include "MS5803.h"
 
 // NOT IMPLEMENTED, and it applies to the 07BA alone: that part carries a third
 // compensation stage above 1100 mbar, and its PROM word 7 is not only the CRC.
@@ -28,45 +28,45 @@ void MS5803_Compensation::setModel(int MaxPressure)
     switch(MaxPressure)
     {
         case (1):   // MS5803-01BA
-            OffShift = 16;
-            OffDtShift = 7;
-            SensShift = 15;
-            SensDtShift = 8;
-            MbarDivisor = 100;
-            T2MultCold = 1;
-            T2ShiftCold = 31;
-            Off2MultCold = 3;
-            Off2ShiftCold = 0;
-            Sens2MultCold = 7;
-            Sens2ShiftCold = 3;
-            Off2MultVeryCold = 0;
-            Sens2MultVeryCold = 2;
-            T2MultHot = 0;
-            T2ShiftHot = 0;
-            Off2MultHot = 0;
-            Sens2MultVeryHot = 1;
-            PShift = 15;
+            _offShift = 16;
+            _offDtShift = 7;
+            _sensShift = 15;
+            _sensDtShift = 8;
+            _mbarDivisor = 100;
+            _t2MultCold = 1;
+            _t2ShiftCold = 31;
+            _off2MultCold = 3;
+            _off2ShiftCold = 0;
+            _sens2MultCold = 7;
+            _sens2ShiftCold = 3;
+            _off2MultVeryCold = 0;
+            _sens2MultVeryCold = 2;
+            _t2MultHot = 0;
+            _t2ShiftHot = 0;
+            _off2MultHot = 0;
+            _sens2MultVeryHot = 1;
+            _pShift = 15;
             break;
 
         case (2):   // MS5803-02BA
-            OffShift = 17;
-            OffDtShift = 6;
-            SensShift = 16;
-            SensDtShift = 7;
-            MbarDivisor = 100;
-            T2MultCold = 1;
-            T2ShiftCold = 31;
-            Off2MultCold = 61;
-            Off2ShiftCold = 4;
-            Sens2MultCold = 2;
-            Sens2ShiftCold = 0;
-            Off2MultVeryCold = 20;
-            Sens2MultVeryCold = 12;
-            T2MultHot = 0;
-            T2ShiftHot = 0;
-            Off2MultHot = 0;
-            Sens2MultVeryHot = 0;
-            PShift = 15;
+            _offShift = 17;
+            _offDtShift = 6;
+            _sensShift = 16;
+            _sensDtShift = 7;
+            _mbarDivisor = 100;
+            _t2MultCold = 1;
+            _t2ShiftCold = 31;
+            _off2MultCold = 61;
+            _off2ShiftCold = 4;
+            _sens2MultCold = 2;
+            _sens2ShiftCold = 0;
+            _off2MultVeryCold = 20;
+            _sens2MultVeryCold = 12;
+            _t2MultHot = 0;
+            _t2ShiftHot = 0;
+            _off2MultHot = 0;
+            _sens2MultVeryHot = 0;
+            _pShift = 15;
             break;
 
         // A bar figure this library does not know no longer takes the 05BA's
@@ -81,87 +81,87 @@ void MS5803_Compensation::setModel(int MaxPressure)
             break;
 
         case (5):   // MS5803-05BA
-            OffShift = 18;
-            OffDtShift = 5;
-            SensShift = 17;
-            SensDtShift = 7;
-            MbarDivisor = 100;
-            T2MultCold = 3;
-            T2ShiftCold = 33;
-            Off2MultCold = 3;
-            Off2ShiftCold = 3;
-            Sens2MultCold = 7;
-            Sens2ShiftCold = 3;
-            Off2MultVeryCold = 0;
-            Sens2MultVeryCold = 3;
-            T2MultHot = 0;
-            T2ShiftHot = 0;
-            Off2MultHot = 0;
-            Sens2MultVeryHot = 0;
-            PShift = 15;
+            _offShift = 18;
+            _offDtShift = 5;
+            _sensShift = 17;
+            _sensDtShift = 7;
+            _mbarDivisor = 100;
+            _t2MultCold = 3;
+            _t2ShiftCold = 33;
+            _off2MultCold = 3;
+            _off2ShiftCold = 3;
+            _sens2MultCold = 7;
+            _sens2ShiftCold = 3;
+            _off2MultVeryCold = 0;
+            _sens2MultVeryCold = 3;
+            _t2MultHot = 0;
+            _t2ShiftHot = 0;
+            _off2MultHot = 0;
+            _sens2MultVeryHot = 0;
+            _pShift = 15;
             break;
 
         case (7):   // MS5803-07BA
-            OffShift = 18;
-            OffDtShift = 5;
-            SensShift = 17;
-            SensDtShift = 6;
-            MbarDivisor = 100;
-            T2MultCold = 3;
-            T2ShiftCold = 33;
-            Off2MultCold = 3;
-            Off2ShiftCold = 3;
-            Sens2MultCold = 7;
-            Sens2ShiftCold = 3;
-            Off2MultVeryCold = 0;
-            Sens2MultVeryCold = 3;
-            T2MultHot = 0;
-            T2ShiftHot = 0;
-            Off2MultHot = 0;
-            Sens2MultVeryHot = 0;
-            PShift = 15;
+            _offShift = 18;
+            _offDtShift = 5;
+            _sensShift = 17;
+            _sensDtShift = 6;
+            _mbarDivisor = 100;
+            _t2MultCold = 3;
+            _t2ShiftCold = 33;
+            _off2MultCold = 3;
+            _off2ShiftCold = 3;
+            _sens2MultCold = 7;
+            _sens2ShiftCold = 3;
+            _off2MultVeryCold = 0;
+            _sens2MultVeryCold = 3;
+            _t2MultHot = 0;
+            _t2ShiftHot = 0;
+            _off2MultHot = 0;
+            _sens2MultVeryHot = 0;
+            _pShift = 15;
             break;
 
         case (14):   // MS5803-14BA
-            OffShift = 16;
-            OffDtShift = 7;
-            SensShift = 15;
-            SensDtShift = 8;
-            MbarDivisor = 10;
-            T2MultCold = 3;
-            T2ShiftCold = 33;
-            Off2MultCold = 3;
-            Off2ShiftCold = 1;
-            Sens2MultCold = 5;
-            Sens2ShiftCold = 3;
-            Off2MultVeryCold = 7;
-            Sens2MultVeryCold = 4;
-            T2MultHot = 7;
-            T2ShiftHot = 37;
-            Off2MultHot = 1;
-            Sens2MultVeryHot = 0;
-            PShift = 15;
+            _offShift = 16;
+            _offDtShift = 7;
+            _sensShift = 15;
+            _sensDtShift = 8;
+            _mbarDivisor = 10;
+            _t2MultCold = 3;
+            _t2ShiftCold = 33;
+            _off2MultCold = 3;
+            _off2ShiftCold = 1;
+            _sens2MultCold = 5;
+            _sens2ShiftCold = 3;
+            _off2MultVeryCold = 7;
+            _sens2MultVeryCold = 4;
+            _t2MultHot = 7;
+            _t2ShiftHot = 37;
+            _off2MultHot = 1;
+            _sens2MultVeryHot = 0;
+            _pShift = 15;
             break;
 
         case (30):   // MS5803-30BA
-            OffShift = 16;
-            OffDtShift = 7;
-            SensShift = 15;
-            SensDtShift = 8;
-            MbarDivisor = 10;
-            T2MultCold = 3;
-            T2ShiftCold = 33;
-            Off2MultCold = 3;
-            Off2ShiftCold = 1;
-            Sens2MultCold = 5;
-            Sens2ShiftCold = 3;
-            Off2MultVeryCold = 7;
-            Sens2MultVeryCold = 4;
-            T2MultHot = 7;
-            T2ShiftHot = 37;
-            Off2MultHot = 1;
-            Sens2MultVeryHot = 0;
-            PShift = 13;
+            _offShift = 16;
+            _offDtShift = 7;
+            _sensShift = 15;
+            _sensDtShift = 8;
+            _mbarDivisor = 10;
+            _t2MultCold = 3;
+            _t2ShiftCold = 33;
+            _off2MultCold = 3;
+            _off2ShiftCold = 1;
+            _sens2MultCold = 5;
+            _sens2ShiftCold = 3;
+            _off2MultVeryCold = 7;
+            _sens2MultVeryCold = 4;
+            _t2MultHot = 7;
+            _t2ShiftHot = 37;
+            _off2MultHot = 1;
+            _sens2MultVeryHot = 0;
+            _pShift = 13;
             break;
     }
 }
@@ -214,45 +214,45 @@ void MS5803_Compensation::compensate(uint32_t D1, uint32_t D2)
     // If temp_calc is below 20.0C
         //LOW TEMP
     {
-        T2 = T2MultCold* (((int64_t)dT * dT) >> T2ShiftCold);
-        OFF2 = Off2MultCold * TempSq / ((int64_t)1 << Off2ShiftCold);
-        SENS2 = Sens2MultCold * TempSq / ((int64_t)1 << Sens2ShiftCold);
+        T2 = _t2MultCold* (((int64_t)dT * dT) >> _t2ShiftCold);
+        OFF2 = _off2MultCold * TempSq / ((int64_t)1 << _off2ShiftCold);
+        SENS2 = _sens2MultCold * TempSq / ((int64_t)1 << _sens2ShiftCold);
 
         if(temp_calc < -1500)
         // If temp_calc is below -15.0C
             //VERY LOW TEMP
         {
             int64_t ColdSq = (int64_t)(temp_calc + 1500) * (temp_calc + 1500);
-            OFF2 = OFF2 + Off2MultVeryCold * ColdSq;
-            SENS2 = SENS2 + Sens2MultVeryCold * ColdSq;
+            OFF2 = OFF2 + _off2MultVeryCold * ColdSq;
+            SENS2 = SENS2 + _sens2MultVeryCold * ColdSq;
         }
     }
     else
     // If temp_calc is above 20.0C
         //HIGH TEMP
     {
-        T2 = T2MultHot * ((int64_t)dT * dT) / ((int64_t)1 << T2ShiftHot);
-        OFF2 = Off2MultHot * TempSq / 16;
+        T2 = _t2MultHot * ((int64_t)dT * dT) / ((int64_t)1 << _t2ShiftHot);
+        OFF2 = _off2MultHot * TempSq / 16;
         SENS2 = 0;
 
         //Entry 17 is 1 on the 01BA, whose flow chart alone carries this term,
         //and 0 on every other variant, where it subtracts nothing. A constant
         //rather than a test on the model.
-        if(temp_calc > 4500) SENS2 = SENS2 - Sens2MultVeryHot * ((int64_t)(temp_calc - 4500) * (temp_calc - 4500))/8;
+        if(temp_calc > 4500) SENS2 = SENS2 - _sens2MultVeryHot * ((int64_t)(temp_calc - 4500) * (temp_calc - 4500))/8;
     }
 
     // Now bring it all together to apply offsets
 
 
-    OFF = ((int64_t)coefficient[2] << OffShift) + (((coefficient[4] * (int64_t)dT)) >> OffDtShift);
-    SENS = ((int64_t)coefficient[1] << SensShift) + (((coefficient[3] * (int64_t)dT)) >> SensDtShift);
+    OFF = ((int64_t)coefficient[2] << _offShift) + (((coefficient[4] * (int64_t)dT)) >> _offDtShift);
+    SENS = ((int64_t)coefficient[1] << _sensShift) + (((coefficient[3] * (int64_t)dT)) >> _sensDtShift);
 
     temp_calc = temp_calc - T2;
     OFF = OFF - OFF2;
     SENS = SENS - SENS2;
 
     // Now lets calculate the pressure
-    pressure_calc = (((SENS * pressure_raw) / 2097152 ) - OFF) / ((int64_t)1 << PShift);
+    pressure_calc = (((SENS * pressure_raw) / 2097152 ) - OFF) / ((int64_t)1 << _pShift);
 
     _temperature_actual = temp_calc ;
     _pressure_actual = pressure_calc ; // 10;// pressure_calc;

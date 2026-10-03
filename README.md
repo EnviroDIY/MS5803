@@ -36,15 +36,16 @@ void loop()
 
 The reading is not lost. `getPressureADC()` and `getTemperatureADC()` give you D1 and D2 whatever the model, which means a reading taken before the part was identified can be compensated afterwards. The Walrus device does exactly this: with no part named in its calibration page it serves its raw conversions, and its library names those columns D1 and D2 instead of a pressure.
 
-## Three headers
+## Four types, one header
 
-| Header | What it is |
-|--------|------------|
-| `MS5803.h` | the part on a bus: `reset()`, `begin()`, `getPressure()`, `getTemperature()` |
-| `MS5803_Compensation.h` | the constants and the datasheet's arithmetic, with no bus in it |
-| `MS5803_Protocol.h` | the addresses, the commands and the conversion options |
+`#include <MS5803.h>` and you have all of them. Most callers want `MS5803` and can ignore the rest.
 
-Most callers want `MS5803.h` and nothing else.
+| Type | What it is |
+|------|------------|
+| `MS5803` | the part on a bus: `reset()`, `begin()`, `getPressure()`, `getTemperature()` |
+| `MS5803_Compensation` | the constants and the datasheet's arithmetic, with no bus in it |
+| `MS5803_Bus`, `MS5803_WireBus` | the seven bus calls, and the hardware bus that answers them |
+| the addresses, commands and conversion options | `ADDRESS_LOW`, `CMD_PROM`, `ADC_4096` and the rest |
 
 `MS5803_Compensation` is there for a board that must read the part itself. A board whose hardware TWI answers its own controller cannot use the hardware bus for its sensors. The Walrus reaches its MS5803 over a software bus with its own timing and its own fault handling, and therefore reads the two conversions itself and hands them over.
 
